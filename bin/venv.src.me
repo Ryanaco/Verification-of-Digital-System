@@ -1,0 +1,7 @@
+# create Python venv
+python3 -m venv .venv
+.venv/bin/pip3 install --upgrade pip
+.venv/bin/pip3 install -r bin/requirements.txt
+
+# Patch PyUVM
+./bin/patch_pyuvm.sh .venv

@@ -1,0 +1,10 @@
+# Python dependencies to run sat_filter and marb TBs
+cocotb == 1.9
+pyuvm == 3.0.0
+pyvsc == 0.8.8.*
+cocotb-coverage == 1.1.0
+constrainedrandom == 1.1.2
+pytest == 8.1
+
+# Visualise coverage
+pyucis-viewer==0.0.4.*

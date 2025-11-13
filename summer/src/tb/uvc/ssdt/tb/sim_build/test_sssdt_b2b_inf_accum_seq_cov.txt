@@ -1,0 +1,21 @@
+Coverage report for test_sssdt_b2b_inf_accum_seq 
+------------------------------------------------
+ 
+TYPE uvm_test_top.ssdt_b2b_env.uvc_ssdt_producer.coverage.cg_ssdt : 66.67%
+    CVP cp_data : 66.67%
+    Bins:
+        data_0 : 0
+        data_max : 4
+        data_others : 44
+    INST uvm_test_top.ssdt_b2b_env.uvc_ssdt_producer.coverage.cg_ssdt : 66.67%
+        CVP cp_data : 66.67%
+        Bins:
+            data_0 : 0
+            data_max : 2
+            data_others : 22
+    INST uvm_test_top.ssdt_b2b_env.uvc_ssdt_consumer.coverage.cg_ssdt : 66.67%
+        CVP cp_data : 66.67%
+        Bins:
+            data_0 : 0
+            data_max : 2
+            data_others : 22

@@ -1,0 +1,21 @@
+Coverage report for test_ssdt_b2b_rand_n_seq 
+------------------------------------------------
+ 
+TYPE uvm_test_top.ssdt_b2b_env.uvc_ssdt_producer.coverage.cg_ssdt : 100.00%
+    CVP cp_data : 100.00%
+    Bins:
+        data_0 : 36
+        data_max : 24
+        data_others : 312
+    INST uvm_test_top.ssdt_b2b_env.uvc_ssdt_producer.coverage.cg_ssdt : 100.00%
+        CVP cp_data : 100.00%
+        Bins:
+            data_0 : 18
+            data_max : 12
+            data_others : 156
+    INST uvm_test_top.ssdt_b2b_env.uvc_ssdt_consumer.coverage.cg_ssdt : 100.00%
+        CVP cp_data : 100.00%
+        Bins:
+            data_0 : 18
+            data_max : 12
+            data_others : 156
