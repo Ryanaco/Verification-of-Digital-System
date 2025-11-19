@@ -1,8 +1,11 @@
+import os
+import warnings
+from random import randint
+
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
-import os, warnings
-from random import randint
+
 import vsc
 import pyuvm
 from pyuvm import *
@@ -10,9 +13,10 @@ from pyuvm import *
 # -------------------------------------------------------
 # Import UVC components
 # -------------------------------------------------------
-from uvc.apb.src import *
-from uvc.sdt.src import *
+from uvc.apb.src import *          # apb_common, cl_apb_interface, ...
+from uvc.sdt.src import *          # sdt_common, cl_sdt_interface, ...
 from uvc.sdt.src.cl_sdt_config import cl_sdt_config
+
 from cl_marb_tb_config import cl_marb_tb_config
 from cl_marb_tb_env import cl_marb_tb_env
 
@@ -21,7 +25,7 @@ _LOG_LEVELS = ["DEBUG", "CRITICAL", "ERROR", "WARNING", "INFO", "NOTSET", "NullH
 
 @pyuvm.test()
 class cl_marb_tb_base_test(uvm_test):
-    """A3 – Base MARB Environment Test"""
+    """A3 Base Test – Fully Implements A2 Environment"""
 
     def __init__(self, name="cl_marb_tb_base_test", parent=None):
         # Handle log level
@@ -36,20 +40,21 @@ class cl_marb_tb_base_test(uvm_test):
         self.dut = cocotb.top
         self.apb_if = None
         self.cfg = None
-        self.marb_tb_env = None
+        self.marb_tb_env: cl_marb_tb_env | None = None
+
         warnings.simplefilter("ignore")
 
     # ============================================================
     # BUILD PHASE
     # ============================================================
     def build_phase(self):
-        self.logger.info("🚧 [BUILD] Starting MARB base test build_phase()")
+        self.logger.info("🚧 Building MARB Base Test")
         super().build_phase()
 
-        # --- 创建配置对象 ---
+        # -------------- 创建总 config 对象 ----------------
         self.cfg = cl_marb_tb_config("cfg")
 
-        # --- APB CONFIG ---
+        # ============== APB CONFIG =======================
         self.cfg.apb_cfg.driver = apb_common.DriverType.PRODUCER
         self.cfg.apb_cfg.seq_item_override = apb_common.SequenceItemOverride.USER_DEFINED
         self.cfg.apb_cfg.ADDR_WIDTH = 32
@@ -58,7 +63,7 @@ class cl_marb_tb_base_test(uvm_test):
         self.cfg.apb_cfg.enable_masked_data = False
         self.cfg.apb_cfg.active_low_reset = False
 
-        # --- 创建 APB 接口 ---
+        # --- 创建 APB interface，并绑定到 DUT 时钟、复位 ---
         self.apb_if = cl_apb_interface(self.dut.clk, self.dut.rst)
         self.cfg.apb_cfg.vif = self.apb_if
         self.apb_if._set_width_parameters(
@@ -66,25 +71,34 @@ class cl_marb_tb_base_test(uvm_test):
             self.cfg.apb_cfg.DATA_WIDTH
         )
 
-        # --- 创建 SDT CONFIG (3 CIF + 1 MIF) ---
+        # ============== SDT CONFIG: 3 CIF + 1 MIF ==========
+        # 和 mem_arb_wrapper 参数保持一致
+        SDT_ADDR_WIDTH = 8
+        SDT_DATA_WIDTH = 8
+
+        # 3 个客户端 CIF：Producer
         self.cfg.sdt_cif_cfgs = []
         for i in range(3):
             cif_cfg = cl_sdt_config()
             cif_cfg.driver = sdt_common.DriverType.PRODUCER
+            cif_cfg.ADDR_WIDTH = SDT_ADDR_WIDTH
+            cif_cfg.DATA_WIDTH = SDT_DATA_WIDTH
+            # name 用于 cl_sdt_interface 内部区分不同端口
             cif_cfg.vif = cl_sdt_interface(self.dut.clk, self.dut.rst, name=f"cif{i}")
             self.cfg.sdt_cif_cfgs.append(cif_cfg)
 
+        # 1 个 MIF：Consumer（内存）
         self.cfg.sdt_mif_cfg = cl_sdt_config()
         self.cfg.sdt_mif_cfg.driver = sdt_common.DriverType.CONSUMER
+        self.cfg.sdt_mif_cfg.ADDR_WIDTH = SDT_ADDR_WIDTH
+        self.cfg.sdt_mif_cfg.DATA_WIDTH = SDT_DATA_WIDTH
         self.cfg.sdt_mif_cfg.vif = cl_sdt_interface(self.dut.clk, self.dut.rst, name="mif")
 
-        # --- 创建环境并配置 ---
+        # ============== 把总 config 放进 Env ================
         ConfigDB().set(self, "marb_tb_env", "cfg", self.cfg)
         self.marb_tb_env = cl_marb_tb_env("marb_tb_env", self)
 
-        # -------------------------------------------------------
-        # ✅ 绑定 APB Agent 到环境
-        # -------------------------------------------------------
+        # ============== 实例化 APB Agent 并挂到 Env =========
         try:
             from uvc.apb.src.cl_apb_agent import cl_apb_agent
             self.marb_tb_env.apb_agent = cl_apb_agent("apb_agent", self.marb_tb_env)
@@ -102,12 +116,6 @@ class cl_marb_tb_base_test(uvm_test):
         self.logger.info("🔗 [CONNECT] Starting connect_phase()")
         super().connect_phase()
 
-        # --- 连接寄存器模型与 APB sequencer ---
-        if hasattr(self.marb_tb_env, "reg_model") and self.marb_tb_env.reg_model is not None:
-            self.marb_tb_env.reg_model.bus_map.set_sequencer(self.marb_tb_env.apb_agent.sequencer)
-        else:
-            self.logger.warning("⚠️ reg_model 未定义，跳过 bus_map 连接。")
-
         # --- 连接 APB 接口信号到 DUT ---
         self.apb_if.connect(
             wr_signal=self.dut.conf_wr,
@@ -118,8 +126,48 @@ class cl_marb_tb_base_test(uvm_test):
             strb_signal=self.dut.conf_strb,
             rdata_signal=self.dut.conf_rdata,
             ready_signal=self.dut.conf_ready,
-            slverr_signal=self.dut.conf_slverr
+            slverr_signal=self.dut.conf_slverr,
         )
+
+        # =====================================================
+        # 连接 SDT CIF / MIF 接口到 DUT —— 完整正确版本
+        # =====================================================
+
+        # ---------------- CIF0 ----------------
+        cif0_vif = self.cfg.sdt_cif_cfgs[0].vif
+        cif0_vif.rd      = self.dut.c0_rd
+        cif0_vif.wr      = self.dut.c0_wr
+        cif0_vif.addr    = self.dut.c0_addr
+        cif0_vif.wr_data = self.dut.c0_wr_data
+        cif0_vif.rd_data = self.dut.c0_rd_data
+        cif0_vif.ack     = self.dut.c0_ack
+
+        # ---------------- CIF1 ----------------
+        cif1_vif = self.cfg.sdt_cif_cfgs[1].vif
+        cif1_vif.rd      = self.dut.c1_rd
+        cif1_vif.wr      = self.dut.c1_wr
+        cif1_vif.addr    = self.dut.c1_addr
+        cif1_vif.wr_data = self.dut.c1_wr_data
+        cif1_vif.rd_data = self.dut.c1_rd_data
+        cif1_vif.ack     = self.dut.c1_ack
+
+        # ---------------- CIF2 ----------------
+        cif2_vif = self.cfg.sdt_cif_cfgs[2].vif
+        cif2_vif.rd      = self.dut.c2_rd
+        cif2_vif.wr      = self.dut.c2_wr
+        cif2_vif.addr    = self.dut.c2_addr
+        cif2_vif.wr_data = self.dut.c2_wr_data
+        cif2_vif.rd_data = self.dut.c2_rd_data
+        cif2_vif.ack     = self.dut.c2_ack
+
+        # ---------------- MIF（Memory） ----------------
+        mif_vif = self.cfg.sdt_mif_cfg.vif
+        mif_vif.rd      = self.dut.m_rd
+        mif_vif.wr      = self.dut.m_wr
+        mif_vif.addr    = self.dut.m_addr
+        mif_vif.wr_data = self.dut.m_wr_data
+        mif_vif.rd_data = self.dut.m_rd_data
+        mif_vif.ack     = self.dut.m_ack
 
         self.logger.info("✅ [CONNECT] Finished connect_phase()")
 

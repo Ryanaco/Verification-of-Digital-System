@@ -11,6 +11,8 @@ class cl_marb_static_test(cl_marb_tb_base_test):
     """A4.1 - Random traffic test with static priority"""
 
     async def run_phase(self):
+        self.logger.info(f"APB agent class: {inspect.getfile(type(env.apb_agent))}")
+        self.logger.info(f"CIF0 agent class: {inspect.getfile(type(env.sdt_cif_agents[0]))}")
         self.logger.info("▶️ [RUN] Starting MARB static priority test")
         await super().run_phase()
 
