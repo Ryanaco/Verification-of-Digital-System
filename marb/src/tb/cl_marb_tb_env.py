@@ -1,5 +1,5 @@
 from pyuvm import *
-from collections import deque
+from queue import Queue
 
 
 class cl_marb_tb_env(uvm_env):
@@ -23,8 +23,8 @@ class cl_marb_tb_env(uvm_env):
         #   cl_sdt_base_driver.build_phase() 中会：
         #     rd_data_queue = ConfigDB().get(self, '', 'rd_data_queue')
         #     wr_data_queue = ConfigDB().get(self, '', 'wr_data_queue')
-        self.rd_data_queue = deque()
-        self.wr_data_queue = deque()
+        self.rd_data_queue = Queue()
+        self.wr_data_queue = Queue()
 
         # ---- 在实例化 SDT agent 之前，为各 driver 设置 FIFO ----
         for i in range(3):
@@ -72,6 +72,30 @@ class cl_marb_tb_env(uvm_env):
         super().connect_phase()
         self.logger.info("🔗 [CONNECT] Starting connect_phase()")
 
+        # ---- 为所有 SDT CIF agents 设置 VIF ----
+        for i, agent in enumerate(self.sdt_cif_agents):
+            # 确保 driver 和 monitor 有 VIF
+            if agent.driver:
+                agent.driver.vif = self.cfg.sdt_cif_cfgs[i].vif
+                agent.driver.cfg.vif = self.cfg.sdt_cif_cfgs[i].vif
+                self.logger.info(f"✅ CIF{i} driver VIF set: {agent.driver.vif.name}")
+            if agent.monitor:
+                agent.monitor.vif = self.cfg.sdt_cif_cfgs[i].vif
+                agent.monitor.cfg.vif = self.cfg.sdt_cif_cfgs[i].vif
+                self.logger.info(f"✅ CIF{i} monitor VIF set: {agent.monitor.vif.name}")
+            self.logger.info(f"📡 CIF{i} agent VIF connected")
+
+        # ---- 为 MIF agent 设置 VIF ----
+        if self.sdt_mif_agent.driver:
+            self.sdt_mif_agent.driver.vif = self.cfg.sdt_mif_cfg.vif
+            self.sdt_mif_agent.driver.cfg.vif = self.cfg.sdt_mif_cfg.vif
+            self.logger.info(f"✅ MIF driver VIF set: {self.sdt_mif_agent.driver.vif.name}")
+        if self.sdt_mif_agent.monitor:
+            self.sdt_mif_agent.monitor.vif = self.cfg.sdt_mif_cfg.vif
+            self.sdt_mif_agent.monitor.cfg.vif = self.cfg.sdt_mif_cfg.vif
+            self.logger.info(f"✅ MIF monitor VIF set: {self.sdt_mif_agent.monitor.vif.name}")
+        self.logger.info("📡 MIF agent VIF connected")
+
         # CIF sequencers → virtual sequencer
         self.virtual_sequencer.cif_seqrs = []
         for i, agent in enumerate(self.sdt_cif_agents):
@@ -85,4 +109,4 @@ class cl_marb_tb_env(uvm_env):
         else:
             self.logger.error("❌ APB agent missing!")
 
-        self.logger.info("🚫 REF Model / Scoreboard skipped for A3–A4")
+        self.logger.info("✅ [CONNECT] Finished connect_phase()")

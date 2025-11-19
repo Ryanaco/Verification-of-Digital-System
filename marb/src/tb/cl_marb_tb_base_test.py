@@ -85,6 +85,8 @@ class cl_marb_tb_base_test(uvm_test):
             cif_cfg.DATA_WIDTH = SDT_DATA_WIDTH
             # name 用于 cl_sdt_interface 内部区分不同端口
             cif_cfg.vif = cl_sdt_interface(self.dut.clk, self.dut.rst, name=f"cif{i}")
+            # ✅ 为 VIF 设置宽度参数
+            cif_cfg.vif._set_width_values(SDT_ADDR_WIDTH, SDT_DATA_WIDTH)
             self.cfg.sdt_cif_cfgs.append(cif_cfg)
 
         # 1 个 MIF：Consumer（内存）
@@ -93,6 +95,8 @@ class cl_marb_tb_base_test(uvm_test):
         self.cfg.sdt_mif_cfg.ADDR_WIDTH = SDT_ADDR_WIDTH
         self.cfg.sdt_mif_cfg.DATA_WIDTH = SDT_DATA_WIDTH
         self.cfg.sdt_mif_cfg.vif = cl_sdt_interface(self.dut.clk, self.dut.rst, name="mif")
+        # ✅ 为 VIF 设置宽度参数
+        self.cfg.sdt_mif_cfg.vif._set_width_values(SDT_ADDR_WIDTH, SDT_DATA_WIDTH)
 
         # ============== 把总 config 放进 Env ================
         ConfigDB().set(self, "marb_tb_env", "cfg", self.cfg)

@@ -4,7 +4,7 @@ from random import randint
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, Timer
 import logging
 import vsc
 import pyuvm
@@ -14,6 +14,7 @@ from pyuvm import *
 # Import UVC components
 # -------------------------------------------------------
 from uvc.apb.src import *          # apb_common, cl_apb_interface, cl_apb_seq_item, ...
+from uvc.apb.src.apb_common import OpType  # ✅ 导入 OpType
 from uvc.sdt.src import *          # sdt_common, cl_sdt_interface, cl_sdt_seq_item, ...
 from uvc.sdt.src.cl_sdt_config import cl_sdt_config
 
@@ -57,15 +58,15 @@ class cl_marb_static_apb_cfg_seq(uvm_sequence):
         seq_logger.info("⚙️ [APB_CFG] Configure arbiter as STATIC mode + priorities")
 
         # ------------------------------------------------------------------
-        # 下面假设有一个 cl_apb_seq_item，字段：addr, wdata, write, strb
+        # 下面假设有一个 cl_apb_seq_item，字段：addr, data, op, strb
         # 如果你实际 UVC 不同，在这里改类名 & 字段名即可
         # ------------------------------------------------------------------
 
         # 写仲裁模式寄存器
         item = cl_apb_seq_item.create("arb_mode_item")
         item.addr  = ARB_MODE_ADDR
-        item.wdata = (ARB_MODE_STATIC << 1) | 0x1     # <-- enable + mode
-        item.write = 1
+        item.data  = (ARB_MODE_STATIC << 1) | 0x1     # <-- enable + mode
+        item.op    = OpType.WR  # ✅ 使用 OpType.WR 而不是 write=1
         item.strb  = 0xF
         await self.start_item(item)
         await self.finish_item(item)
@@ -74,8 +75,8 @@ class cl_marb_static_apb_cfg_seq(uvm_sequence):
         # C0 priority
         item = cl_apb_seq_item.create("c0_prio_item")
         item.addr  = C0_PRIO_ADDR
-        item.wdata = C0_PRIORITY
-        item.write = 1
+        item.data  = C0_PRIORITY
+        item.op    = OpType.WR
         item.strb  = 0xF
         await self.start_item(item)
         await self.finish_item(item)
@@ -84,8 +85,8 @@ class cl_marb_static_apb_cfg_seq(uvm_sequence):
         # C1 priority
         item = cl_apb_seq_item.create("c1_prio_item")
         item.addr  = C1_PRIO_ADDR
-        item.wdata = C1_PRIORITY
-        item.write = 1
+        item.data  = C1_PRIORITY
+        item.op    = OpType.WR
         item.strb  = 0xF
         await self.start_item(item)
         await self.finish_item(item)
@@ -94,8 +95,8 @@ class cl_marb_static_apb_cfg_seq(uvm_sequence):
         # C2 priority
         item = cl_apb_seq_item.create("c2_prio_item")
         item.addr  = C2_PRIO_ADDR
-        item.wdata = C2_PRIORITY
-        item.write = 1
+        item.data  = C2_PRIORITY
+        item.op    = OpType.WR
         item.strb  = 0xF
         await self.start_item(item)
         await self.finish_item(item)
@@ -125,15 +126,14 @@ class cl_marb_static_cif_seq(uvm_sequence):
             # 假设 SDT seq_item 名叫 cl_sdt_seq_item
             item = cl_sdt_seq_item.create(f"cif{self.client_id}_item{i}")
             item.addr    = addr
-            item.wr_data = (self.client_id << 4) + i
-            item.rd      = 0
-            item.wr      = 1
+            item.data    = (self.client_id << 4) + i  # ✅ 改成 data 而不是 wr_data
+            item.access  = 1  # ✅ 1 = WRITE，0 = READ
 
             await self.start_item(item)
             await self.finish_item(item)
 
             seq_logger.info(
-                f"  - CIF{self.client_id} WRITE addr=0x{addr:02X}, data=0x{item.wr_data:02X}"
+                f"  - CIF{self.client_id} WRITE addr=0x{addr:02X}, data=0x{item.data:02X}"
             )
 
         seq_logger.info(f"✅ [CIF{self.client_id}] Static traffic sequence done")
@@ -176,6 +176,10 @@ class cl_marb_tb_static_test(cl_marb_tb_base_test):
 
         self.logger.info("⚙️ APB 配置完成，进入 static 仲裁模式")
 
+        # ✅ 等待额外时间确保 driver 已准备好
+        await Timer(100, units="ns")
+        self.logger.info("✅ 等待 driver 准备完毕")
+
         # -------------------------
         # 2) 启动 CIF0/1/2 写请求
         # -------------------------
@@ -186,11 +190,21 @@ class cl_marb_tb_static_test(cl_marb_tb_base_test):
         cif2_seq = cl_marb_static_cif_seq("c2_seq", client_id=2, base_addr=0x10)
 
         self.logger.info("🚀 启动 CIF0/1/2 sequence ...")
-
+        self.logger.info(f"🔍 CIF0 sequencer: {self.marb_tb_env.cif0_agent.sequencer}")
+        self.logger.info(f"🔍 CIF0 agent has driver: {hasattr(self.marb_tb_env.cif0_agent, 'driver')}")
+        
         # 现在先顺序跑，能工作再考虑并行
+        self.logger.info("▶️ Starting CIF0 sequence...")
         await cif0_seq.start(self.marb_tb_env.cif0_agent.sequencer)
+        self.logger.info("✅ CIF0 sequence finished")
+        
+        self.logger.info("▶️ Starting CIF1 sequence...")
         await cif1_seq.start(self.marb_tb_env.cif1_agent.sequencer)
+        self.logger.info("✅ CIF1 sequence finished")
+        
+        self.logger.info("▶️ Starting CIF2 sequence...")
         await cif2_seq.start(self.marb_tb_env.cif2_agent.sequencer)
+        self.logger.info("✅ CIF2 sequence finished")
 
         self.logger.info("📤 全部 CIF sequence 执行完毕")
 

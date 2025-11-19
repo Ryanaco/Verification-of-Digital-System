@@ -124,7 +124,7 @@ class cl_sdt_base_driver(uvm_driver):
 
             # Waits for sequence item
             self.req = await self.seq_item_port.get_next_item()
-            self.logger.debug(f"Driver item: {self.req}")
+            self.logger.debug(f"Driver received item: {self.req.get_name()}")
 
             # Creates clone of sequence item
             self.rsp = self.req.clone()
@@ -140,3 +140,4 @@ class cl_sdt_base_driver(uvm_driver):
             # Send response
             self.seq_item_port.item_done()
             self.seq_item_port.put_response(self.rsp)
+            self.logger.debug(f"Driver finished item: {self.req.get_name()}")

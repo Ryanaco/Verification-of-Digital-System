@@ -13,9 +13,12 @@ class cl_sdt_consumer_driver(cl_sdt_base_driver):
         self.vif.ack.value     = 0
 
     async def flushing_queue(self):
-        while len(self.rd_data_queue) != 0:
-            item = self.rd_data_queue.popleft()
-            await self.do_read(item)
+        while not self.rd_data_queue.empty():
+            try:
+                item = self.rd_data_queue.get_nowait()
+                await self.do_read(item)
+            except:
+                break
 
     async def drive_pins(self):
         self.logger.debug("Consumer driver waiting for RD or WR")
