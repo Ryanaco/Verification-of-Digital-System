@@ -7,29 +7,24 @@ import vsc
 import pyuvm
 from pyuvm import *
 
-# --- Safe import of UVM_ACTIVE / UVM_PASSIVE (for any PyUVM version) ---
-try:
-    from pyuvm.enums import UVM_ACTIVE, UVM_PASSIVE
-except ImportError:
-    try:
-        from pyuvm.s03_uvm_common import UVM_ACTIVE, UVM_PASSIVE
-    except ImportError:
-        UVM_ACTIVE, UVM_PASSIVE = 1, 0
-
+# -------------------------------------------------------
+# Import UVC components
+# -------------------------------------------------------
 from uvc.apb.src import *
 from uvc.sdt.src import *
 from uvc.sdt.src.cl_sdt_config import cl_sdt_config
 from cl_marb_tb_config import cl_marb_tb_config
 from cl_marb_tb_env import cl_marb_tb_env
 
-
 _LOG_LEVELS = ["DEBUG", "CRITICAL", "ERROR", "WARNING", "INFO", "NOTSET", "NullHandler"]
 
 
 @pyuvm.test()
 class cl_marb_tb_base_test(uvm_test):
+    """A3 – Base MARB Environment Test"""
+
     def __init__(self, name="cl_marb_tb_base_test", parent=None):
-        # --- Logging setup ---
+        # Handle log level
         if os.getenv("PYUVM_LOG_LEVEL") in _LOG_LEVELS:
             _PYUVM_LOG_LEVEL = os.getenv("PYUVM_LOG_LEVEL")
         else:
@@ -39,8 +34,8 @@ class cl_marb_tb_base_test(uvm_test):
         super().__init__(name, parent)
 
         self.dut = cocotb.top
-        self.cfg = None
         self.apb_if = None
+        self.cfg = None
         self.marb_tb_env = None
         warnings.simplefilter("ignore")
 
@@ -51,12 +46,10 @@ class cl_marb_tb_base_test(uvm_test):
         self.logger.info("🚧 [BUILD] Starting MARB base test build_phase()")
         super().build_phase()
 
-        # --- Create top-level TB config ---
+        # --- 创建配置对象 ---
         self.cfg = cl_marb_tb_config("cfg")
 
-        # ============================================================
-        # APB CONFIGURATION
-        # ============================================================
+        # --- APB CONFIG ---
         self.cfg.apb_cfg.driver = apb_common.DriverType.PRODUCER
         self.cfg.apb_cfg.seq_item_override = apb_common.SequenceItemOverride.USER_DEFINED
         self.cfg.apb_cfg.ADDR_WIDTH = 32
@@ -65,7 +58,7 @@ class cl_marb_tb_base_test(uvm_test):
         self.cfg.apb_cfg.enable_masked_data = False
         self.cfg.apb_cfg.active_low_reset = False
 
-        # --- Create APB interface ---
+        # --- 创建 APB 接口 ---
         self.apb_if = cl_apb_interface(self.dut.clk, self.dut.rst)
         self.cfg.apb_cfg.vif = self.apb_if
         self.apb_if._set_width_parameters(
@@ -73,35 +66,32 @@ class cl_marb_tb_base_test(uvm_test):
             self.cfg.apb_cfg.DATA_WIDTH
         )
 
-        # ============================================================
-        # SDT CONFIGURATION (3 CIFs + 1 MIF)
-        # ============================================================
+        # --- 创建 SDT CONFIG (3 CIF + 1 MIF) ---
         self.cfg.sdt_cif_cfgs = []
         for i in range(3):
-            cif_cfg = cl_sdt_config(f"sdt_cif{i}_cfg")
+            cif_cfg = cl_sdt_config()
             cif_cfg.driver = sdt_common.DriverType.PRODUCER
-            cif_cfg.is_active = UVM_ACTIVE
-            cif_cfg.ADDR_WIDTH = 8
-            cif_cfg.DATA_WIDTH = 8
-            cif_cfg.enable_transaction_coverage = True
             cif_cfg.vif = cl_sdt_interface(self.dut.clk, self.dut.rst, name=f"cif{i}")
             self.cfg.sdt_cif_cfgs.append(cif_cfg)
-            ConfigDB().set(self, "marb_tb_env", f"sdt_cif{i}_cfg", cif_cfg)
 
-        # --- Memory Interface (Consumer side) ---
-        self.cfg.sdt_mif_cfg = cl_sdt_config("sdt_mif_cfg")
+        self.cfg.sdt_mif_cfg = cl_sdt_config()
         self.cfg.sdt_mif_cfg.driver = sdt_common.DriverType.CONSUMER
-        self.cfg.sdt_mif_cfg.is_active = UVM_ACTIVE
-        self.cfg.sdt_mif_cfg.ADDR_WIDTH = 8
-        self.cfg.sdt_mif_cfg.DATA_WIDTH = 8
         self.cfg.sdt_mif_cfg.vif = cl_sdt_interface(self.dut.clk, self.dut.rst, name="mif")
-        ConfigDB().set(self, "marb_tb_env", "sdt_mif_cfg", self.cfg.sdt_mif_cfg)
 
-        # ============================================================
-        # Create environment & set global config
-        # ============================================================
+        # --- 创建环境并配置 ---
         ConfigDB().set(self, "marb_tb_env", "cfg", self.cfg)
         self.marb_tb_env = cl_marb_tb_env("marb_tb_env", self)
+
+        # -------------------------------------------------------
+        # ✅ 绑定 APB Agent 到环境
+        # -------------------------------------------------------
+        try:
+            from uvc.apb.src.cl_apb_agent import cl_apb_agent
+            self.marb_tb_env.apb_agent = cl_apb_agent("apb_agent", self.marb_tb_env)
+            ConfigDB().set(self, "marb_tb_env.apb_agent", "cfg", self.cfg.apb_cfg)
+            self.logger.info("🔗 APB Agent successfully attached to MARB env")
+        except Exception as e:
+            self.logger.error(f"❌ Failed to attach APB agent: {e}")
 
         self.logger.info("✅ [BUILD] Finished build_phase()")
 
@@ -112,13 +102,13 @@ class cl_marb_tb_base_test(uvm_test):
         self.logger.info("🔗 [CONNECT] Starting connect_phase()")
         super().connect_phase()
 
-        # --- Connect register model to APB sequencer if exists ---
+        # --- 连接寄存器模型与 APB sequencer ---
         if hasattr(self.marb_tb_env, "reg_model") and self.marb_tb_env.reg_model is not None:
             self.marb_tb_env.reg_model.bus_map.set_sequencer(self.marb_tb_env.apb_agent.sequencer)
         else:
             self.logger.warning("⚠️ reg_model 未定义，跳过 bus_map 连接。")
 
-        # --- Connect APB signals to DUT ---
+        # --- 连接 APB 接口信号到 DUT ---
         self.apb_if.connect(
             wr_signal=self.dut.conf_wr,
             sel_signal=self.dut.conf_sel,
@@ -149,7 +139,7 @@ class cl_marb_tb_base_test(uvm_test):
         """启动 DUT 时钟"""
         self.clk_period = randint(2, 5)
         self.logger.info(f"🕒 启动时钟 (period={self.clk_period} ns)")
-        cocotb.start_soon(Clock(self.dut.clk, self.clk_period, 'ns').start())
+        cocotb.start_soon(Clock(self.dut.clk, self.clk_period, "ns").start())
 
     async def trigger_reset(self):
         """产生复位信号"""
