@@ -20,6 +20,7 @@ class cl_sdt_seq_item(uvm_sequence_item, object):
         self.access = vsc.rand_bit_t(1)
         self.addr = vsc.rand_uint32_t()
         self.data = vsc.rand_uint32_t()
+        self.producer_id = None  # Set by monitor or test
 
         # Cycle delays
         self.consumer_delay_rdwr1_ack1 = vsc.rand_uint32_t()
@@ -52,6 +53,7 @@ class cl_sdt_seq_item(uvm_sequence_item, object):
         self.access = rhs.access
         self.addr = rhs.addr
         self.data = rhs.data
+        self.producer_id = rhs.producer_id
 
         # Cycle delays
         self.consumer_delay_rdwr1_ack1 = rhs.consumer_delay_rdwr1_ack1

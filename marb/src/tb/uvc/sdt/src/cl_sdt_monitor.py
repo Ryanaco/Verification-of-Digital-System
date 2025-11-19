@@ -99,6 +99,18 @@ class cl_sdt_monitor(uvm_monitor):
             # Transaction item
             seq_item_name = self.get_full_name() + "sdt_mon_item"
             item = cl_sdt_seq_item.create(seq_item_name)
+            
+            # Extract producer_id from agent name (e.g., "cif0_agent" -> 0, "mif_agent" -> 3)
+            agent_name = self.get_parent().get_name()
+            try:
+                if "cif" in agent_name:
+                    item.producer_id = int(agent_name.replace("cif", "").replace("_agent", ""))
+                elif "mif" in agent_name:
+                    item.producer_id = 3  # MIF is ID 3
+                else:
+                    item.producer_id = None
+            except:
+                item.producer_id = None
 
             # Monitor process
             self.logger.debug(f"Monitor transaction start #{self.clk_cyc_cnt}: {item}")

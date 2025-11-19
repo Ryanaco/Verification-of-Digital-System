@@ -1,5 +1,7 @@
 from pyuvm import *
 from queue import Queue
+from cl_marb_ref_model import cl_marb_ref_model
+from cl_marb_scoreboard import cl_marb_scoreboard
 
 
 class cl_marb_tb_env(uvm_env):
@@ -68,6 +70,16 @@ class cl_marb_tb_env(uvm_env):
 
         self.logger.info("🟩 SDT MIF agent instantiated")
 
+        # ---- 实例化 Reference Model ----
+        self.logger.info("🧠 Creating Reference Model...")
+        self.ref_model = cl_marb_ref_model("ref_model", self)
+        self.logger.info("✅ Reference Model instantiated")
+
+        # ---- 实例化 Scoreboard ----
+        self.logger.info("📊 Creating Scoreboard...")
+        self.scoreboard = cl_marb_scoreboard("scoreboard", self)
+        self.logger.info("✅ Scoreboard instantiated")
+
     def connect_phase(self):
         super().connect_phase()
         self.logger.info("🔗 [CONNECT] Starting connect_phase()")
@@ -108,5 +120,22 @@ class cl_marb_tb_env(uvm_env):
             self.logger.info("📡 APB sequencer → Virtual Sequencer")
         else:
             self.logger.error("❌ APB agent missing!")
+
+        # ---- 连接 CIF monitors 的 request_ap 到 ref_model ----
+        self.logger.info("🔗 Connecting analysis ports...")
+        for i, agent in enumerate(self.sdt_cif_agents):
+            if agent.monitor and hasattr(agent.monitor, "request_ap"):
+                agent.monitor.request_ap.connect(self.ref_model.analysis_export)
+                self.logger.info(f"📡 CIF{i} monitor request_ap → ref_model")
+
+        # ---- 连接 MIF monitor 的 ap 到 scoreboard 的 dut_subscriber ----
+        if self.sdt_mif_agent.monitor and hasattr(self.sdt_mif_agent.monitor, "ap"):
+            self.sdt_mif_agent.monitor.ap.connect(self.scoreboard.dut_subscriber.analysis_export)
+            self.logger.info("📡 MIF monitor ap → scoreboard.dut_subscriber")
+
+        # ---- 连接 ref_model 的输出到 scoreboard 的 ref_subscriber ----
+        if hasattr(self.ref_model, "ref_ap"):
+            self.ref_model.ref_ap.connect(self.scoreboard.ref_subscriber.analysis_export)
+            self.logger.info("📡 ref_model.ref_ap → scoreboard.ref_subscriber")
 
         self.logger.info("✅ [CONNECT] Finished connect_phase()")

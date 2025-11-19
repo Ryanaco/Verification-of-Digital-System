@@ -1,40 +1,72 @@
 from pyuvm import *
 
 
-class cl_marb_scoreboard(uvm_component):
-    """Scoreboard comparing DUT output vs Reference Model output"""
-
+class RefSubscriber(uvm_subscriber):
+    """Subscriber to receive Reference Model outputs"""
     def __init__(self, name, parent):
         super().__init__(name, parent)
 
-        # ✅ 改成 analysis_imp，这样 write() 会自动注册
-        self.ref_export = uvm_analysis_imp("ref_export", self)
-        self.dut_export = uvm_analysis_imp("dut_export", self)
-
-        self.ref_queue = []
-        self.dut_queue = []
-
-    # ============================================================
-    # Called automatically when connected analysis ports write
-    # ============================================================
-    def write_ref_export(self, txn):
+    def write(self, txn):
+        """Called when ref_model writes to analysis port"""
         self.logger.info(
             f"📥 [SCOREBOARD] REF txn: CIF{getattr(txn, 'producer_id', '?')} "
             f"(addr={getattr(txn, 'addr', '?')}, data={getattr(txn, 'wr_data', '?')})"
         )
-        self.ref_queue.append(txn)
-        self._compare_if_ready()
+        # Send to scoreboard for comparison
+        if hasattr(self.get_parent(), '_process_ref_txn'):
+            self.get_parent()._process_ref_txn(txn)
 
-    def write_dut_export(self, txn):
+
+class DutSubscriber(uvm_subscriber):
+    """Subscriber to receive DUT (MIF) outputs"""
+    def __init__(self, name, parent):
+        super().__init__(name, parent)
+
+    def write(self, txn):
+        """Called when MIF monitor writes to analysis port"""
         self.logger.info(
             f"📥 [SCOREBOARD] DUT txn: CIF{getattr(txn, 'producer_id', '?')} "
             f"(addr={getattr(txn, 'addr', '?')}, data={getattr(txn, 'wr_data', '?')})"
         )
+        # Send to scoreboard for comparison
+        if hasattr(self.get_parent(), '_process_dut_txn'):
+            self.get_parent()._process_dut_txn(txn)
+
+
+class cl_marb_scoreboard(uvm_component):
+    """Scoreboard comparing DUT and Reference Model outputs"""
+
+    def __init__(self, name, parent):
+        super().__init__(name, parent)
+        
+        # Create subscribers
+        self.ref_subscriber = None
+        self.dut_subscriber = None
+
+        self.ref_queue = []
+        self.dut_queue = []
+
+    def build_phase(self):
+        super().build_phase()
+        # Create subscribers during build phase
+        self.ref_subscriber = RefSubscriber("ref_subscriber", self)
+        self.dut_subscriber = DutSubscriber("dut_subscriber", self)
+
+    # ============================================================
+    # Process transactions from subscribers
+    # ============================================================
+    def _process_ref_txn(self, txn):
+        """Handle Reference Model transaction"""
+        self.ref_queue.append(txn)
+        self._compare_if_ready()
+
+    def _process_dut_txn(self, txn):
+        """Handle DUT transaction"""
         self.dut_queue.append(txn)
         self._compare_if_ready()
 
     # ============================================================
-    # Compare when both sides ready
+    # 比较两边事务
     # ============================================================
     def _compare_if_ready(self):
         if not self.ref_queue or not self.dut_queue:
