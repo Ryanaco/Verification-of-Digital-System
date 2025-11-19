@@ -1,53 +1,73 @@
 from pyuvm import *
-from cl_marb_ref_model import cl_marb_ref_model
-from cl_marb_scoreboard import cl_marb_scoreboard
 
 
 class cl_marb_tb_env(uvm_env):
-    """MARB Testbench Environment with REF model + Scoreboard"""
+    """
+    MARB Testbench Environment (Clean A3–A4 version)
+    - NO reference model
+    - NO scoreboard
+    - Includes:
+        * CIF SDT agents
+        * MIF SDT agent
+        * APB agent
+        * Virtual Sequencer (with CIF + APB sequencers)
+    """
 
     def build_phase(self):
-        self.logger.info("🏗️ [BUILD] Building MARB Testbench Environment")
         super().build_phase()
+        self.logger.info("🏗️ [BUILD] Building MARB Clean Testbench Environment")
 
-        # 构建子组件
-        self.ref_model = cl_marb_ref_model("ref_model", self)
-        self.scoreboard = cl_marb_scoreboard("scoreboard", self)
-
-        # 获取配置对象（如果在 base test 已设置）
+        # -------------------------------------------------------
+        # 配置对象（从 base test 注入）
+        # -------------------------------------------------------
         self.cfg = ConfigDB().get(self, "", "cfg")
 
-        # 创建 SDT agents（如果未定义）
+        # -------------------------------------------------------
+        # Virtual Sequencer （A4 必须）
+        # -------------------------------------------------------
+        self.virtual_sequencer = uvm_sequencer("virtual_sequencer", self)
+
+        # -------------------------------------------------------
+        # 占位：这些会在 base_test 里注入
+        # -------------------------------------------------------
         if not hasattr(self, "sdt_cif_agents"):
-            self.sdt_cif_agents = []
+            self.sdt_cif_agents = []    # list of 3 CIF agents
+
         if not hasattr(self, "sdt_mif_agent"):
-            self.sdt_mif_agent = None
+            self.sdt_mif_agent = None   # MIF SDT agent
 
+        if not hasattr(self, "apb_agent"):
+            self.apb_agent = None       # APB agent
+
+    # -------------------------------------------------------
+    # CONNECT PHASE
+    # -------------------------------------------------------
     def connect_phase(self):
-        self.logger.info("🔗 [CONNECT] Connecting REF model and Scoreboard")
         super().connect_phase()
+        self.logger.info("🔗 [CONNECT] Connecting Clean MARB Testbench Components")
 
-        # ============================
-        # 1️⃣ CIF request_ap → REF model
-        # ============================
+        # -------------------------------------------------------
+        # 1. CIF SDT sequencers → Virtual Sequencer
+        # -------------------------------------------------------
+        self.virtual_sequencer.cif_seqrs = []
+
         for i, agent in enumerate(self.sdt_cif_agents):
-            if hasattr(agent, "request_ap"):
-                self.logger.info(f"📡 Connecting CIF{i}.request_ap → REF model.analysis_export")
-                agent.request_ap.connect(self.ref_model.analysis_export)
+            if hasattr(agent, "sequencer"):
+                self.virtual_sequencer.cif_seqrs.append(agent.sequencer)
+                self.logger.info(f"📡 CIF{i} sequencer → Virtual Sequencer")
             else:
-                self.logger.warning(f"⚠️ CIF{i} has no request_ap defined")
+                self.logger.error(f"❌ CIF{i} has no sequencer!")
 
-        # ============================
-        # 2️⃣ REF model → Scoreboard
-        # ============================
-        self.logger.info("📡 Connecting REF model.ref_ap → Scoreboard.ref_export")
-        self.ref_model.ref_ap.connect(self.scoreboard.ref_export)
-
-        # ============================
-        # 3️⃣ DUT output (MIF.ap) → Scoreboard
-        # ============================
-        if self.sdt_mif_agent and hasattr(self.sdt_mif_agent, "ap"):
-            self.logger.info("📡 Connecting MIF.ap → Scoreboard.dut_export")
-            self.sdt_mif_agent.ap.connect(self.scoreboard.dut_export)
+        # -------------------------------------------------------
+        # 2. APB sequencer → Virtual Sequencer
+        # -------------------------------------------------------
+        if self.apb_agent and hasattr(self.apb_agent, "sequencer"):
+            self.virtual_sequencer.apb_seqr = self.apb_agent.sequencer
+            self.logger.info("📡 APB sequencer → Virtual Sequencer")
         else:
-            self.logger.warning("⚠️ MIF agent or ap missing, cannot connect DUT output.")
+            self.logger.error("❌ APB agent not connected or missing sequencer")
+
+        # -------------------------------------------------------
+        # 3. 不连接 REF 或 Scoreboard（A5/A6 禁用）
+        # -------------------------------------------------------
+        self.logger.info("🚫 Reference Model / Scoreboard disabled for A3–A4")

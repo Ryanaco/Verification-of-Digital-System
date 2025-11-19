@@ -2,22 +2,22 @@ from pyuvm import *
 
 
 class cl_marb_scoreboard(uvm_component):
-    """Scoreboard comparing DUT and Reference Model outputs"""
+    """Scoreboard comparing DUT output vs Reference Model output"""
 
     def __init__(self, name, parent):
         super().__init__(name, parent)
-        # 定义两个分析端口
-        self.ref_export = uvm_analysis_export("ref_export", self)
-        self.dut_export = uvm_analysis_export("dut_export", self)
+
+        # ✅ 改成 analysis_imp，这样 write() 会自动注册
+        self.ref_export = uvm_analysis_imp("ref_export", self)
+        self.dut_export = uvm_analysis_imp("dut_export", self)
 
         self.ref_queue = []
         self.dut_queue = []
 
     # ============================================================
-    # Reference Model 输出（必须存在！）
+    # Called automatically when connected analysis ports write
     # ============================================================
     def write_ref_export(self, txn):
-        """Handles transactions from Reference Model"""
         self.logger.info(
             f"📥 [SCOREBOARD] REF txn: CIF{getattr(txn, 'producer_id', '?')} "
             f"(addr={getattr(txn, 'addr', '?')}, data={getattr(txn, 'wr_data', '?')})"
@@ -25,11 +25,7 @@ class cl_marb_scoreboard(uvm_component):
         self.ref_queue.append(txn)
         self._compare_if_ready()
 
-    # ============================================================
-    # DUT 输出（必须存在！）
-    # ============================================================
     def write_dut_export(self, txn):
-        """Handles transactions from DUT (MIF agent)"""
         self.logger.info(
             f"📥 [SCOREBOARD] DUT txn: CIF{getattr(txn, 'producer_id', '?')} "
             f"(addr={getattr(txn, 'addr', '?')}, data={getattr(txn, 'wr_data', '?')})"
@@ -38,7 +34,7 @@ class cl_marb_scoreboard(uvm_component):
         self._compare_if_ready()
 
     # ============================================================
-    # 比较两边事务
+    # Compare when both sides ready
     # ============================================================
     def _compare_if_ready(self):
         if not self.ref_queue or not self.dut_queue:
