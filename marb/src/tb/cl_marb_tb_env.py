@@ -51,6 +51,10 @@ class cl_marb_tb_env(uvm_env):
             ConfigDB().set(self, f"cif{i}_agent.sequencer", "cfg", cif_cfg)
 
             self.sdt_cif_agents.append(agent)
+
+            # ⭐ 新增：挂成属性，方便 test 用 self.marb_tb_env.cif0_agent 访问
+            setattr(self, f"cif{i}_agent", agent)
+
             self.logger.info(f"🟦 SDT CIF{i} agent instantiated")
 
         # ---- 实例化 MIF Agent ----
