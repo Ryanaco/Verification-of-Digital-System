@@ -115,6 +115,12 @@ class cl_sdt_b2b_base_test(uvm_test):
 
         await self.trigger_reset()
 
+        # ============================================================
+        # 🟦 A7: Start SDT protocol checker
+        # ============================================================
+        checker = SDTProtocolChecker("SDT_B2B_CHECKER", self.sdt_if)
+        cocotb.start_soon(checker.start())
+
         # Start assertions and data integrity check
         cocotb.start_soon(self.data_integrity_check_RD())
         cocotb.start_soon(self.data_integrity_check_WR())

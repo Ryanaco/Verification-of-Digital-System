@@ -5,7 +5,7 @@ from random import randint
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
-
+from uvc.sdt.src.sdt_if_assertions import SDTProtocolChecker
 import vsc
 import pyuvm
 from pyuvm import *
@@ -184,6 +184,30 @@ class cl_marb_tb_base_test(uvm_test):
 
         await self.start_clock()
         await self.trigger_reset()
+
+        # -----------------------------------------------------
+        # A7: 启动 SDT 协议检查器
+        # -----------------------------------------------------
+        self.logger.info("🔍 Starting SDT protocol checkers...")
+
+        # CIF0
+        ck0 = SDTProtocolChecker("CIF0", self.cfg.sdt_cif_cfgs[0].vif)
+        cocotb.start_soon(ck0.start())
+
+        # CIF1
+        ck1 = SDTProtocolChecker("CIF1", self.cfg.sdt_cif_cfgs[1].vif)
+        cocotb.start_soon(ck1.start())
+
+        # CIF2
+        ck2 = SDTProtocolChecker("CIF2", self.cfg.sdt_cif_cfgs[2].vif)
+        cocotb.start_soon(ck2.start())
+
+        # MIF（内存）
+        ckm = SDTProtocolChecker("MIF", self.cfg.sdt_mif_cfg.vif)
+        cocotb.start_soon(ckm.start())
+
+        self.logger.info("✅ SDT protocol checkers started.")
+        # -----------------------------------------------------
 
         self.logger.info("🏁 [RUN] Completed MARB base test run_phase()")
 

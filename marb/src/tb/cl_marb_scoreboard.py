@@ -1,91 +1,146 @@
+# cl_marb_scoreboard.py
+import logging
+from collections import deque
+
+import pyuvm
 from pyuvm import *
 
+from cocotb.triggers import Timer   # ✅ 别忘了这个
 
-class RefSubscriber(uvm_subscriber):
-    """Subscriber to receive Reference Model outputs"""
-    def __init__(self, name, parent):
+from uvc.sdt.src import *   # cl_sdt_seq_item
+
+
+class _marb_ref_subscriber(uvm_subscriber):
+    """
+    用于 Scoreboard 接收 REF 模型输出的 subscriber
+    """
+    def __init__(self, name, parent, queue_ref):
         super().__init__(name, parent)
+        self.queue_ref = queue_ref
+        self.logger = logging.getLogger("MARB_SCOREBOARD_REF_SUB")
 
-    def write(self, txn):
-        """Called when ref_model writes to analysis port"""
+    def write(self, item: cl_sdt_seq_item):
         self.logger.info(
-            f"📥 [SCOREBOARD] REF txn: CIF{getattr(txn, 'producer_id', '?')} "
-            f"(addr={getattr(txn, 'addr', '?')}, data={getattr(txn, 'wr_data', '?')})"
+            f"📥 [SCOREBOARD] REF txn: CIF{int(getattr(item, 'cif_id', -1))} "
+            f"(addr={int(item.addr)}, data=0x{int(item.data):02X}, access={int(item.access)})"
         )
-        # Send to scoreboard for comparison
-        if hasattr(self.get_parent(), '_process_ref_txn'):
-            self.get_parent()._process_ref_txn(txn)
+        self.queue_ref.append(item)
 
 
-class DutSubscriber(uvm_subscriber):
-    """Subscriber to receive DUT (MIF) outputs"""
-    def __init__(self, name, parent):
+class _marb_dut_subscriber(uvm_subscriber):
+    """
+    用于 Scoreboard 接收 DUT (MIF monitor ap) 输出的 subscriber
+    """
+    def __init__(self, name, parent, queue_dut):
         super().__init__(name, parent)
+        self.queue_dut = queue_dut
+        self.logger = logging.getLogger("MARB_SCOREBOARD_DUT_SUB")
 
-    def write(self, txn):
-        """Called when MIF monitor writes to analysis port"""
+    def write(self, item: cl_sdt_seq_item):
+        # DUT 侧 item 通常只代表 MIF 方向访问，没有 CIF id；
+        # 可以由 monitor 填一个来源字段，也可以 Scoreboard 只比较 addr/data。
+        addr = int(item.addr)
+        data = int(item.data)
+        access = int(item.access)
+
         self.logger.info(
-            f"📥 [SCOREBOARD] DUT txn: CIF{getattr(txn, 'producer_id', '?')} "
-            f"(addr={getattr(txn, 'addr', '?')}, data={getattr(txn, 'wr_data', '?')})"
+            f"📥 [SCOREBOARD] DUT txn: addr={addr}, data=0x{data:02X}, access={access}"
         )
-        # Send to scoreboard for comparison
-        if hasattr(self.get_parent(), '_process_dut_txn'):
-            self.get_parent()._process_dut_txn(txn)
+        self.queue_dut.append(item)
 
 
 class cl_marb_scoreboard(uvm_component):
-    """Scoreboard comparing DUT and Reference Model outputs"""
+    """
+    Memory Arbiter Scoreboard (A6)
 
-    def __init__(self, name, parent):
+    - ref_subscriber: 通过 ref_model.ref_ap 接收 golden txn
+    - dut_subscriber: 通过 MIF monitor.ap 接收 DUT txn
+    - 每当两边都有 txn 时进行比较：
+        * 地址
+        * 访问类型（access）
+        * 数据（data，在写操作时比较）
+    - mismatch 时使用 uvm_error -> 计入测试失败
+    """
+
+    def __init__(self, name="cl_marb_scoreboard", parent=None):
         super().__init__(name, parent)
-        
-        # Create subscribers
-        self.ref_subscriber = None
-        self.dut_subscriber = None
 
-        self.ref_queue = []
-        self.dut_queue = []
+        self.logger = logging.getLogger("MARB_SCOREBOARD")
+
+        # 两个队列，用于暂存 REF / DUT 的事务
+        self.ref_queue = deque()
+        self.dut_queue = deque()
+
+        # 两个 subscriber，env 里会把 AP 连过来
+        self.ref_subscriber = _marb_ref_subscriber(
+            "ref_subscriber", self, self.ref_queue
+        )
+        self.dut_subscriber = _marb_dut_subscriber(
+            "dut_subscriber", self, self.dut_queue
+        )
 
     def build_phase(self):
         super().build_phase()
-        # Create subscribers during build phase
-        self.ref_subscriber = RefSubscriber("ref_subscriber", self)
-        self.dut_subscriber = DutSubscriber("dut_subscriber", self)
+        self.logger.info("🧮 [SCOREBOARD] Build phase")
 
-    # ============================================================
-    # Process transactions from subscribers
-    # ============================================================
-    def _process_ref_txn(self, txn):
-        """Handle Reference Model transaction"""
-        self.ref_queue.append(txn)
-        self._compare_if_ready()
+    async def run_phase(self):
+        """
+        简单实现：轮询两个队列，只要两边都有 txn 就比较
+        """
+        self.logger.info("▶️ [SCOREBOARD] Start run_phase()")
+        while True:
+            await Timer(1, "ns")  # 粗暴一点，每 1ns check 一次
 
-    def _process_dut_txn(self, txn):
-        """Handle DUT transaction"""
-        self.dut_queue.append(txn)
-        self._compare_if_ready()
+            while self.ref_queue and self.dut_queue:
+                ref_item = self.ref_queue.popleft()
+                dut_item = self.dut_queue.popleft()
 
-    # ============================================================
-    # 比较两边事务
-    # ============================================================
-    def _compare_if_ready(self):
-        if not self.ref_queue or not self.dut_queue:
+                self._compare(ref_item, dut_item)
+
+    # ===============================
+    # 核心比较逻辑
+    # ===============================
+    def _compare(self, ref_item: cl_sdt_seq_item, dut_item: cl_sdt_seq_item):
+        ref_addr = int(ref_item.addr)
+        dut_addr = int(dut_item.addr)
+
+        ref_data = int(ref_item.data)
+        dut_data = int(dut_item.data)
+
+        ref_access = int(ref_item.access)
+        dut_access = int(dut_item.access)
+
+        cif_id = int(getattr(ref_item, "cif_id", -1))
+
+        # 地址比较
+        if ref_addr != dut_addr:
+            self.logger.error(
+                f"❌ [SCOREBOARD] Address mismatch: "
+                f"REF: CIF{cif_id} addr={ref_addr}, DUT addr={dut_addr}"
+            )
+            uvm_error("MARB_SCOREBOARD", "Address mismatch")
             return
 
-        ref_txn = self.ref_queue.pop(0)
-        dut_txn = self.dut_queue.pop(0)
-
-        ref_id = getattr(ref_txn, "producer_id", None)
-        dut_id = getattr(dut_txn, "producer_id", None)
-        ref_addr = getattr(ref_txn, "addr", None)
-        dut_addr = getattr(dut_txn, "addr", None)
-        ref_data = getattr(ref_txn, "wr_data", None)
-        dut_data = getattr(dut_txn, "wr_data", None)
-
-        if (ref_id == dut_id) and (ref_addr == dut_addr) and (ref_data == dut_data):
-            self.logger.info(f"✅ [MATCH] CIF{ref_id} OK (addr={ref_addr}, data={ref_data})")
-        else:
+        # 访问类型比较（读/写）
+        if ref_access != dut_access:
             self.logger.error(
-                f"❌ [MISMATCH] REF: CIF{ref_id}, addr={ref_addr}, data={ref_data} "
-                f"≠ DUT: CIF{dut_id}, addr={dut_addr}, data={dut_data}"
+                f"❌ [SCOREBOARD] Access type mismatch: "
+                f"REF: CIF{cif_id} access={ref_access}, DUT access={dut_access}"
             )
+            uvm_error("MARB_SCOREBOARD", "Access type mismatch")
+            return
+
+        # 只对写操作比较 data（读的话 data 是从内存来的，可能不在模型里）
+        if ref_access == 1:  # 写访问
+            if ref_data != dut_data:
+                self.logger.error(
+                    f"❌ [SCOREBOARD] Write data mismatch: "
+                    f"REF: CIF{cif_id} data=0x{ref_data:02X}, DUT data=0x{dut_data:02X}"
+                )
+                uvm_error("MARB_SCOREBOARD", "Write data mismatch")
+                return
+
+        self.logger.info(
+            f"✅ [SCOREBOARD] Match: CIF{cif_id}, "
+            f"addr={ref_addr}, access={ref_access}, data=0x{ref_data:02X}"
+        )

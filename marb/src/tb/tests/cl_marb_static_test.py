@@ -14,7 +14,7 @@ from pyuvm import *
 # Import UVC components
 # -------------------------------------------------------
 from uvc.apb.src import *          # apb_common, cl_apb_interface, cl_apb_seq_item, ...
-from uvc.apb.src.apb_common import OpType  # ✅ 导入 OpType
+from uvc.apb.src.apb_common import OpType  # APB op type
 from uvc.sdt.src import *          # sdt_common, cl_sdt_interface, cl_sdt_seq_item, ...
 from uvc.sdt.src.cl_sdt_config import cl_sdt_config
 
@@ -27,22 +27,23 @@ _LOG_LEVELS = ["DEBUG", "CRITICAL", "ERROR", "WARNING", "INFO", "NOTSET", "NullH
 
 
 # ============================================================
-# 一些寄存器地址 / 字段值常量 —— 按课程文档自己修改
+# APB 地址 / 寄存器字段定义（根据文档）
 # ============================================================
 
-# TODO: 根据你的 mem_arb 寄存器定义修改这些地址
-ARB_MODE_ADDR   = 0x00  # 仲裁模式配置寄存器地址
-C0_PRIO_ADDR    = 0x04  # client0 优先级寄存器地址
-C1_PRIO_ADDR    = 0x08  # client1 优先级寄存器地址
-C2_PRIO_ADDR    = 0x0C  # client2 优先级寄存器地址
+# 控制寄存器地址：enable + mode
+ARB_CTRL_ADDR   = 0x00  # Control register (enable + mode)
 
-# TODO: 根据文档定义 static 模式的编码，比如 0: static, 1: round-robin
+# Dynamic priority 寄存器起始地址（一个 32bit 寄存器，8bit × 4 CIF）
+DPRIO_ADDR      = 0x04  # DPrio base address (cif0[7:0], cif1[15:8], cif2[23:16])
+
+# mode 定义：0 = static，1 = dynamic
 ARB_MODE_STATIC = 0x0
 
-# 优先级数值：数值越小优先级越高（或反过来，看你设计）
-C0_PRIORITY = 0  # 最高
+# static 模式下默认优先级：CIF0 > CIF1 > CIF2
+# （RTL 里 static priority 是固定顺序；这里写 DPrio 只是为了更清晰）
+C0_PRIORITY = 2  # 优先级值越大优先级越高（根据文档 DPrio 定义）
 C1_PRIORITY = 1
-C2_PRIORITY = 2
+C2_PRIORITY = 0
 
 
 # ============================================================
@@ -54,89 +55,159 @@ class cl_marb_static_apb_cfg_seq(uvm_sequence):
         super().__init__(name)
 
     async def body(self):
-        # 用全局的 Python logger，而不是 self.logger
         seq_logger.info("⚙️ [APB_CFG] Configure arbiter as STATIC mode + priorities")
 
-        # ------------------------------------------------------------------
-        # 下面假设有一个 cl_apb_seq_item，字段：addr, data, op, strb
-        # 如果你实际 UVC 不同，在这里改类名 & 字段名即可
-        # ------------------------------------------------------------------
+        # ------------------------------------------------------
+        # 1) 写 Control 寄存器：enable=1, mode=STATIC(0)
+        #    control[0] = enable
+        #    control[2:1] = mode
+        # ------------------------------------------------------
+        ctrl_value = (ARB_MODE_STATIC << 1) | 0x1
 
-        # 写仲裁模式寄存器
-        item = cl_apb_seq_item.create("arb_mode_item")
-        item.addr  = ARB_MODE_ADDR
-        item.data  = (ARB_MODE_STATIC << 1) | 0x1     # <-- enable + mode
-        item.op    = OpType.WR  # ✅ 使用 OpType.WR 而不是 write=1
-        item.strb  = 0xF
-        await self.start_item(item)
-        await self.finish_item(item)
-        seq_logger.info(f"  - Set ARB_MODE = STATIC + ENABLE")
-
-        # C0 priority
-        item = cl_apb_seq_item.create("c0_prio_item")
-        item.addr  = C0_PRIO_ADDR
-        item.data  = C0_PRIORITY
+        item = cl_apb_seq_item.create("arb_ctrl_item")
+        item.addr  = ARB_CTRL_ADDR
+        item.data  = ctrl_value
         item.op    = OpType.WR
         item.strb  = 0xF
         await self.start_item(item)
         await self.finish_item(item)
-        seq_logger.info(f"  - Set C0 priority @0x{C0_PRIO_ADDR:08X} = {C0_PRIORITY}")
+        seq_logger.info(f"  - Set CTRL @0x{ARB_CTRL_ADDR:08X} = 0x{ctrl_value:08X} "
+                        f"(mode=STATIC, enable=1)")
 
-        # C1 priority
-        item = cl_apb_seq_item.create("c1_prio_item")
-        item.addr  = C1_PRIO_ADDR
-        item.data  = C1_PRIORITY
+        # ------------------------------------------------------
+        # 2) 写 DPrio 寄存器（可选，对 static 模式行为无影响，
+        #    只是让寄存器内容更“好看”）
+        #    DPrio[ 7: 0] = CIF0
+        #          [15: 8] = CIF1
+        #          [23:16] = CIF2
+        # ------------------------------------------------------
+        dprio_value = (
+            (C2_PRIORITY & 0xFF) << 16 |
+            (C1_PRIORITY & 0xFF) << 8  |
+            (C0_PRIORITY & 0xFF)
+        )
+
+        item = cl_apb_seq_item.create("dprio_item")
+        item.addr  = DPRIO_ADDR
+        item.data  = dprio_value
         item.op    = OpType.WR
         item.strb  = 0xF
         await self.start_item(item)
         await self.finish_item(item)
-        seq_logger.info(f"  - Set C1 priority @0x{C1_PRIO_ADDR:08X} = {C1_PRIORITY}")
-
-        # C2 priority
-        item = cl_apb_seq_item.create("c2_prio_item")
-        item.addr  = C2_PRIO_ADDR
-        item.data  = C2_PRIORITY
-        item.op    = OpType.WR
-        item.strb  = 0xF
-        await self.start_item(item)
-        await self.finish_item(item)
-        seq_logger.info(f"  - Set C2 priority @0x{C2_PRIO_ADDR:08X} = {C2_PRIORITY}")
+        seq_logger.info(
+            f"  - Set DPRIO @0x{DPRIO_ADDR:08X} = 0x{dprio_value:08X} "
+            f"(c0={C0_PRIORITY}, c1={C1_PRIORITY}, c2={C2_PRIORITY})"
+        )
 
         seq_logger.info("✅ [APB_CFG] Arbiter static config done")
 
 
 # ============================================================
-# 简单的 SDT client sequence：
-#   在固定地址做若干写操作，用来制造争用
+# SDT client sequence（Producer）：随机流量 + 地址重叠制造争用
 # ============================================================
 class cl_marb_static_cif_seq(uvm_sequence):
+    """
+    针对单个 CIF 的随机 traffic sequence：
+      - 在一个小地址窗口内随机读/写
+      - 随机事务数量
+      - 连续发送，制造与其他 CIF 的竞争
+    """
 
-    def __init__(self, name="cl_marb_static_cif_seq", client_id=0, base_addr=0x10):
+    def __init__(self,
+                 name="cl_marb_static_cif_seq",
+                 client_id=0,
+                 base_addr=0x10,
+                 num_min=5,
+                 num_max=15):
         super().__init__(name)
         self.client_id = client_id
         self.base_addr = base_addr
+        self.num_min   = num_min
+        self.num_max   = num_max
 
     async def body(self):
-        seq_logger.info(f"🧪 [CIF{self.client_id}] Static traffic sequence start")
+        num_txn = randint(self.num_min, self.num_max)
+        seq_logger.info(
+            f"🧪 [CIF{self.client_id}] Static traffic start, num_txn={num_txn}, "
+            f"base_addr=0x{self.base_addr:02X}"
+        )
 
-        # 这里简单发 4 个写请求到同一片地址区域
-        for i in range(4):
-            addr = self.base_addr + i
+        for i in range(num_txn):
+            # 在 base_addr ~ base_addr+0x0F 范围随机访问，
+            # 这样不同 CIF 会非常容易“撞车”
+            addr = self.base_addr + randint(0, 0x0F)
 
-            # 假设 SDT seq_item 名叫 cl_sdt_seq_item
+            # 0: READ, 1: WRITE
+            access = randint(0, 1)
+            data   = randint(0, 0xFF)
+
             item = cl_sdt_seq_item.create(f"cif{self.client_id}_item{i}")
-            item.addr    = addr
-            item.data    = (self.client_id << 4) + i  # ✅ 改成 data 而不是 wr_data
-            item.access  = 1  # ✅ 1 = WRITE，0 = READ
+            item.addr   = addr
+            item.data   = data
+            item.access = access  # 1 = WRITE, 0 = READ
 
             await self.start_item(item)
             await self.finish_item(item)
 
-            seq_logger.info(
-                f"  - CIF{self.client_id} WRITE addr=0x{addr:02X}, data=0x{item.data:02X}"
-            )
+            if access == 1:
+                seq_logger.info(
+                    f"  - CIF{self.client_id} WRITE addr=0x{addr:02X}, data=0x{data:02X}"
+                )
+            else:
+                seq_logger.info(
+                    f"  - CIF{self.client_id} READ  addr=0x{addr:02X}"
+                )
+
+            # 在事务之间插一点随机空闲时间，让不同 CIF 更容易错位/重叠
+            await Timer(randint(0, 10), units="ns")
 
         seq_logger.info(f"✅ [CIF{self.client_id}] Static traffic sequence done")
+
+
+# ============================================================
+# Virtual Sequence：统一控制 APB + 三个 CIF 的随机 traffic
+# ============================================================
+class cl_marb_static_vseq(uvm_sequence):
+    """
+    STATIC 模式并发随机 traffic 的 virtual sequence
+    """
+
+    def __init__(self, name="cl_marb_static_vseq"):
+        super().__init__(name)
+
+    async def body(self):
+        # pyuvm 中 sequencer 的访问方式是 self.sequencer
+        vseqr = self.sequencer
+        seq_logger.info("🎬 [VSEQ] Static random traffic virtual sequence start")
+
+        # 1) APB 配置 static 模式
+        apb_cfg_seq = cl_marb_static_apb_cfg_seq("apb_cfg_seq")
+        await apb_cfg_seq.start(vseqr.apb_seqr)
+        seq_logger.info("⚙️ [VSEQ] APB static config completed")
+
+        # 2) 随机冲突地址窗口
+        base_addr = randint(0x10, 0x40)
+        seq_logger.info(
+            f"📍 [VSEQ] Conflict address window base = 0x{base_addr:02X}"
+        )
+
+        cif0_seq = cl_marb_static_cif_seq("c0_seq", client_id=0, base_addr=base_addr)
+        cif1_seq = cl_marb_static_cif_seq("c1_seq", client_id=1, base_addr=base_addr)
+        cif2_seq = cl_marb_static_cif_seq("c2_seq", client_id=2, base_addr=base_addr)
+
+        seq_logger.info("🚀 [VSEQ] Launch CIF0/1/2 sequences in parallel ...")
+
+        # 并发执行
+        t0 = cocotb.start_soon(cif0_seq.start(vseqr.cif_seqrs[0]))
+        t1 = cocotb.start_soon(cif1_seq.start(vseqr.cif_seqrs[1]))
+        t2 = cocotb.start_soon(cif2_seq.start(vseqr.cif_seqrs[2]))
+
+        await t0
+        await t1
+        await t2
+
+        seq_logger.info("📤 [VSEQ] All CIF sequences completed")
+        seq_logger.info("🏁 [VSEQ] Static random traffic virtual sequence done")
 
 
 # ============================================================
@@ -145,68 +216,37 @@ class cl_marb_static_cif_seq(uvm_sequence):
 @pyuvm.test()
 class cl_marb_tb_static_test(cl_marb_tb_base_test):
     """
-    A4 Static Arbiter Test
+    A4.1 Random traffic test case with STATIC priority
 
-    - 继承 A3 base env
-    - 用 APB 把仲裁器设置为 STATIC 模式
-    - 配置 C0 > C1 > C2 优先级
-    - 三个 CIF 在同一段地址发写请求，制造争用
-    - 通过波形 / log 观察最高优先级是否总是先被服务
+    - 复用 A3 base env（APB + 3x CIF + 1x MIF + virtual sequencer）
+    - 用 APB 把仲裁器设置为 STATIC 模式（mode=0, enable=1）
+    - 通过 virtual sequence 并发发起 CIF0/1/2 的随机 traffic
+    - 地址窗口重叠 => 制造争用
+    - 通过波形 / log 观察：
+        * 高优先级 CIF0 应当“更容易”被服务
+        * 不会出现多个 CIF 同时 ack
     """
 
     def __init__(self, name="cl_marb_tb_static_test", parent=None):
         super().__init__(name, parent)
 
-    # build_phase / connect_phase 直接复用 base_test 的
-    # 如果需要也可以在这里 override，但现在没必要
-
     async def run_phase(self):
         self.raise_objection()
-        self.logger.info("▶️ [RUN] Starting MARB STATIC test run_phase()")
+        self.logger.info("▶️ [RUN] Starting MARB STATIC random test run_phase()")
 
-        # 启动时钟 + 复位
+        # 1) 启动时钟 + 复位（复用 base_test 的实现）
         await self.start_clock()
         await self.trigger_reset()
 
-        # -------------------------
-        # 1) APB 配置 static 模式
-        # -------------------------
-        apb_cfg_seq = cl_marb_static_apb_cfg_seq("apb_cfg_seq")
-        await apb_cfg_seq.start(self.marb_tb_env.apb_agent.sequencer)
+        # 2) 启动 static virtual sequence
+        vseq = cl_marb_static_vseq("static_vseq")
 
-        self.logger.info("⚙️ APB 配置完成，进入 static 仲裁模式")
+        # 这里使用 env 里的 virtual_sequencer
+        self.logger.info("🎯 Starting static virtual sequence on env.virtual_sequencer")
+        await vseq.start(self.marb_tb_env.virtual_sequencer)
 
-        # ✅ 等待额外时间确保 driver 已准备好
+        # 3) 等待一点时间，让最后几个 handshake / ack 走完，美化波形
         await Timer(100, units="ns")
-        self.logger.info("✅ 等待 driver 准备完毕")
 
-        # -------------------------
-        # 2) 启动 CIF0/1/2 写请求
-        # -------------------------
-        # ❌ 原来是 cl_static_cif_seq —— 不存在
-        # ✅ 改成你上面定义的 cl_marb_static_cif_seq
-        cif0_seq = cl_marb_static_cif_seq("c0_seq", client_id=0, base_addr=0x10)
-        cif1_seq = cl_marb_static_cif_seq("c1_seq", client_id=1, base_addr=0x10)
-        cif2_seq = cl_marb_static_cif_seq("c2_seq", client_id=2, base_addr=0x10)
-
-        self.logger.info("🚀 启动 CIF0/1/2 sequence ...")
-        self.logger.info(f"🔍 CIF0 sequencer: {self.marb_tb_env.cif0_agent.sequencer}")
-        self.logger.info(f"🔍 CIF0 agent has driver: {hasattr(self.marb_tb_env.cif0_agent, 'driver')}")
-        
-        # 现在先顺序跑，能工作再考虑并行
-        self.logger.info("▶️ Starting CIF0 sequence...")
-        await cif0_seq.start(self.marb_tb_env.cif0_agent.sequencer)
-        self.logger.info("✅ CIF0 sequence finished")
-        
-        self.logger.info("▶️ Starting CIF1 sequence...")
-        await cif1_seq.start(self.marb_tb_env.cif1_agent.sequencer)
-        self.logger.info("✅ CIF1 sequence finished")
-        
-        self.logger.info("▶️ Starting CIF2 sequence...")
-        await cif2_seq.start(self.marb_tb_env.cif2_agent.sequencer)
-        self.logger.info("✅ CIF2 sequence finished")
-
-        self.logger.info("📤 全部 CIF sequence 执行完毕")
-
+        self.logger.info("🏁 STATIC random test completed")
         self.drop_objection()
-        self.logger.info("🏁 STATIC TEST 完成")
