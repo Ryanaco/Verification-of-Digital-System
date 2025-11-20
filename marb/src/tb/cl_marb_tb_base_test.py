@@ -50,7 +50,7 @@ class cl_marb_tb_base_test(uvm_test):
     def build_phase(self):
         self.logger.info("🚧 Building MARB Base Test")
         super().build_phase()
-
+        self.logger.critical(f"🔥 base_test loaded from file: {__file__}")
         # -------------- 创建总 config 对象 ----------------
         self.cfg = cl_marb_tb_config("cfg")
 
@@ -179,8 +179,9 @@ class cl_marb_tb_base_test(uvm_test):
     # RUN PHASE
     # ============================================================
     async def run_phase(self):
+        # 用 UVM objection 控制仿真生命周期
+        self.raise_objection()
         self.logger.info("▶️ [RUN] Starting MARB base test run_phase()")
-        await super().run_phase()
 
         await self.start_clock()
         await self.trigger_reset()
@@ -188,29 +189,43 @@ class cl_marb_tb_base_test(uvm_test):
         # -----------------------------------------------------
         # A7: 启动 SDT 协议检查器
         # -----------------------------------------------------
-        self.logger.info("🔍 Starting SDT protocol checkers...")
+        self.logger.info("🔍 [A7] Creating SDT protocol checkers...")
 
-        # CIF0
         ck0 = SDTProtocolChecker("CIF0", self.cfg.sdt_cif_cfgs[0].vif)
-        cocotb.start_soon(ck0.start())
-
-        # CIF1
         ck1 = SDTProtocolChecker("CIF1", self.cfg.sdt_cif_cfgs[1].vif)
-        cocotb.start_soon(ck1.start())
-
-        # CIF2
         ck2 = SDTProtocolChecker("CIF2", self.cfg.sdt_cif_cfgs[2].vif)
-        cocotb.start_soon(ck2.start())
+        ckm = SDTProtocolChecker("MIF",  self.cfg.sdt_mif_cfg.vif)
 
-        # MIF（内存）
+        self.logger.info("✅ [A7] SDTProtocolChecker objects created, starting coroutines...")
+
+        cocotb.start_soon(ck0.start())
+        cocotb.start_soon(ck1.start())
+        cocotb.start_soon(ck2.start())
+        cocotb.start_soon(ckm.start())
+
+        self.logger.info("✅ [A7] SDT protocol checkers started.")
+
+        # 给检查器留出时间工作（也给上层 virtual seq 运行）
+        await Timer(2000, units="ns")
+
+        self.logger.info("🏁 [RUN] Completed MARB base test run_phase()")
+        self.drop_objection()
+    async def start_of_simulation_phase(self):
+        await super().start_of_simulation_phase()
+
+        self.logger.info("🔍 [A7] Starting SDT protocol checkers at start_of_simulation_phase()")
+
+        ck0 = SDTProtocolChecker("CIF0", self.cfg.sdt_cif_cfgs[0].vif)
+        ck1 = SDTProtocolChecker("CIF1", self.cfg.sdt_cif_cfgs[1].vif)
+        ck2 = SDTProtocolChecker("CIF2", self.cfg.sdt_cif_cfgs[2].vif)
         ckm = SDTProtocolChecker("MIF", self.cfg.sdt_mif_cfg.vif)
+
+        cocotb.start_soon(ck0.start())
+        cocotb.start_soon(ck1.start())
+        cocotb.start_soon(ck2.start())
         cocotb.start_soon(ckm.start())
 
         self.logger.info("✅ SDT protocol checkers started.")
-        # -----------------------------------------------------
-
-        self.logger.info("🏁 [RUN] Completed MARB base test run_phase()")
-
     async def start_clock(self):
         """启动 DUT 时钟"""
         self.clk_period = randint(2, 5)
