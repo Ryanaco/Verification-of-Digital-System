@@ -2,6 +2,7 @@ from pyuvm import *
 from queue import Queue
 from cl_marb_ref_model import cl_marb_ref_model
 from cl_marb_scoreboard import cl_marb_scoreboard
+from cl_marb_coverage import cl_marb_coverage_collector
 
 
 class cl_marb_tb_env(uvm_env):
@@ -74,6 +75,11 @@ class cl_marb_tb_env(uvm_env):
         self.scoreboard = cl_marb_scoreboard("scoreboard", self)
         self.logger.info("✅ Scoreboard instantiated")
 
+        # ---- Coverage Collector ----
+        self.logger.info("📈 Creating Coverage Collector...")
+        self.coverage = cl_marb_coverage_collector("coverage", self)
+        self.logger.info("✅ Coverage Collector instantiated")
+
     # ===================================================================
     # CONNECT PHASE
     # ===================================================================
@@ -126,7 +132,8 @@ class cl_marb_tb_env(uvm_env):
             self.scoreboard.dut_subscriber.analysis_export
         )
         self.logger.info("📡 MIF.ap → scoreboard.dut_subscriber")
-
+        self.sdt_mif_agent.monitor.ap.connect(self.coverage.analysis_export)
+        self.logger.info("📡 MIF.ap → coverage.analysis_export")
         # ref_model.ref_ap → scoreboard.ref_subscriber
         self.ref_model.ref_ap.connect(self.scoreboard.ref_subscriber.analysis_export)
         self.logger.info("📡 ref_model.ref_ap → scoreboard.ref_subscriber")

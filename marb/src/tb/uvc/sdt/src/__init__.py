@@ -15,4 +15,4 @@ from .cl_sdt_seq_lib import *
 from .cl_sdt_sequencer import *
 from .sdt_common import *
 from .cl_sdt_coverage import *
-from .sdt_if_assertions import SDTProtocolChecker
+from .sdt_if_assertions import *
