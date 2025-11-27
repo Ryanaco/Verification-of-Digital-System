@@ -41,7 +41,7 @@ class cl_reg_block(uvm_reg_block):
 
         # 3) 把寄存器加入 map（偏移地址用 16 进制字符串）
         self.bus_map.add_reg(self.ctrl_reg, "0x0", "RW")
-        self.bus_map.add_reg(self.dprio_reg, "0x0", "RW")
+        self.bus_map.add_reg(self.dprio_reg, "0x100", "RW")
 
         # 4) 设置默认 map（pyuvm 推荐这样做）
         self.default_map = self.bus_map

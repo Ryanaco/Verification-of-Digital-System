@@ -3,6 +3,7 @@ import vsc
 from uvc.sdt.src import *
 from cl_marb_tb_base_seq import cl_marb_tb_base_seq
 from reg_model.seq_lib.cl_reg_setup_seq import cl_reg_setup_seq
+from reg_model.seq_lib.cl_reg_static_seq import cl_reg_static_seq
 
 @vsc.randobj
 class cl_reg_simple_seq(cl_marb_tb_base_seq, object):
@@ -15,10 +16,10 @@ class cl_reg_simple_seq(cl_marb_tb_base_seq, object):
     async def body(self):
         await super().body()
 
-        # Setup seqs and set reg_model
+        self.sequencer.logger.debug("Starting setup seq (reg_model/seq_lib/cl_reg_setup_seq.py)")
         setup_seq  = cl_reg_setup_seq.create("setup_seq")
-
-        # Start sequences
-        self.sequencer.logger.debug("Starting setup seq")
         await setup_seq.start(self.sequencer)
 
+        self.sequencer.logger.debug("Starting static seq (reg_model/seq_lib/cl_reg_static_seq.py)")
+        static_seq = cl_reg_static_seq.create("static_seq")
+        await static_seq.start(self.sequencer)
