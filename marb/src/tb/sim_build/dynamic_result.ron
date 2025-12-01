@@ -1,0 +1,928 @@
+(
+    show_hierarchy: None,
+    show_menu: None,
+    show_ticks: None,
+    show_toolbar: None,
+    show_tooltip: None,
+    show_overview: None,
+    show_statusbar: None,
+    align_names_right: None,
+    show_variable_indices: None,
+    show_variable_direction: None,
+    show_empty_scopes: None,
+    show_parameters_in_scopes: None,
+    waves: Some((
+        source: File("mem_arb_waves.vcd"),
+        format: Vcd,
+        active_scope: Some(WaveScope((
+            strs: [
+                "mem_arb_wrapper",
+                "mem_arb_i",
+            ],
+        ))),
+        displayed_items_order: [
+            (1),
+            (2),
+            (3),
+            (4),
+            (5),
+            (6),
+            (7),
+            (8),
+            (9),
+            (10),
+            (11),
+            (12),
+            (13),
+            (14),
+            (15),
+            (16),
+            (17),
+            (18),
+            (19),
+            (20),
+            (21),
+            (22),
+            (23),
+            (24),
+            (25),
+            (26),
+            (27),
+            (28),
+            (29),
+            (30),
+            (31),
+            (32),
+            (33),
+            (34),
+            (35),
+            (36),
+            (37),
+            (38),
+            (39),
+            (40),
+            (41),
+            (42),
+            (43),
+            (44),
+            (45),
+        ],
+        displayed_items: {
+            (9): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c1_rd",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c1_rd",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (3): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c0_rd",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c0_rd",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (10): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c1_rd_data",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c1_rd_data [7:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (13): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c2_ack",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c2_ack",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (12): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c1_wr_data",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c1_wr_data [7:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (31): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "ctrl_reg",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "ctrl_reg [31:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (24): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "conf_rdata",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "conf_rdata [31:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (8): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c1_addr",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c1_addr [7:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (25): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "conf_ready",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "conf_ready",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (28): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "conf_strb",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "conf_strb [3:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (1): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c0_ack",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c0_ack",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (22): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "conf_addr",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "conf_addr [31:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (33): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "dprio_wstrb_single",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "dprio_wstrb_single",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (35): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "m_addr",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "m_addr [7:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (4): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c0_rd_data",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c0_rd_data [7:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (20): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "cif_select",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "cif_select [1:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (30): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "conf_wr",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "conf_wr",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (37): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "m_rd_data",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "m_rd_data [7:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (7): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c1_ack",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c1_ack",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (38): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "m_wr",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "m_wr",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (39): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "m_wr_data",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "m_wr_data [7:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (6): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c0_wr_data",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c0_wr_data [7:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (16): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c2_rd_data",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c2_rd_data [7:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (11): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c1_wr",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c1_wr",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (26): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "conf_sel",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "conf_sel",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (41): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "prio_list1",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "prio_list1 [1:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (32): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "dprio_wstrb",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "dprio_wstrb [3:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (15): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c2_rd",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c2_rd",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (45): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "state",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "state [31:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (19): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "cif_req",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "cif_req [5:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (23): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "conf_enable",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "conf_enable",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (44): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "stable",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "stable",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (40): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "prio_list0",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "prio_list0 [1:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (36): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "m_rd",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "m_rd",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (14): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c2_addr",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c2_addr [7:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (27): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "conf_slverr",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "conf_slverr",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (2): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c0_addr",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c0_addr [7:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (5): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c0_wr",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c0_wr",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (21): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "clk",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "clk",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (18): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c2_wr_data",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c2_wr_data [7:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (17): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "c2_wr",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "c2_wr",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (43): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "rst",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "rst",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (29): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "conf_wdata",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "conf_wdata [31:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (42): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "prio_list2",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "prio_list2 [1:0]",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+            (34): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "mem_arb_wrapper",
+                            "mem_arb_i",
+                        ],
+                    ),
+                    name: "m_ack",
+                ),
+                color: None,
+                background_color: None,
+                display_name: "m_ack",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+            )),
+        },
+        display_item_ref_counter: 45,
+        viewports: [
+            (
+                curr_left: (0.008999999891966468),
+                curr_right: (1.0089999998919672),
+                target_left: (0.0),
+                target_right: (1.0),
+                move_start_left: (0.0),
+                move_start_right: (1.0),
+                move_duration: None,
+                move_strategy: Instant,
+            ),
+        ],
+        cursor: None,
+        markers: {},
+        focused_item: None,
+        focused_transaction: (None, None),
+        selected_items: [],
+        default_variable_name_type: Unique,
+        scroll_offset: 288.0,
+        display_variable_indices: true,
+        graphics: {},
+    )),
+    drag_started: false,
+    drag_source_idx: None,
+    drag_target_idx: None,
+    previous_waves: None,
+    count: None,
+    blacklisted_translators: [],
+    show_about: false,
+    show_keys: false,
+    show_gestures: false,
+    show_quick_start: false,
+    show_license: false,
+    show_performance: false,
+    show_logs: false,
+    show_cursor_window: false,
+    wanted_timeunit: PicoSeconds,
+    time_string_format: None,
+    show_url_entry: false,
+    variable_name_filter_focused: false,
+    variable_name_filter_type: Fuzzy,
+    variable_name_filter_case_insensitive: true,
+    rename_target: None,
+    sidepanel_width: Some(300.0),
+    ui_zoom_factor: None,
+)

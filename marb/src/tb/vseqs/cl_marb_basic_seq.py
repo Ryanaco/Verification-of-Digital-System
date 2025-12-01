@@ -12,3 +12,5 @@ class cl_marb_basic_seq(cl_marb_tb_base_seq):
         await super().body()
 
         self.sequencer.logger.info("STARTING STARTING SEQUENCES")
+        # ✅ MIF consumer driver runs independently in run_phase()
+        # No need to start sequence - consumer will listen and respond to requests

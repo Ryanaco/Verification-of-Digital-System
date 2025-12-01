@@ -108,6 +108,7 @@ class cl_marb_tb_env(uvm_env):
         self.virtual_sequencer.cif_seqrs = [
             agent.sequencer for agent in self.sdt_cif_agents
         ]
+        self.virtual_sequencer.mif_seqr = self.sdt_mif_agent.sequencer  # ✅ ADD MIF sequencer
         self.virtual_sequencer.apb_seqr = self.apb_agent.sequencer
 
         # ===================================================================

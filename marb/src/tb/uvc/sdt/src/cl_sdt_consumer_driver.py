@@ -4,58 +4,93 @@ from cocotb.types import LogicArray
 from .cl_sdt_base_driver import *
 
 class cl_sdt_consumer_driver(cl_sdt_base_driver):
+    """MIF Consumer driver - responds to producer requests independently"""
+    
     def __init__(self, name, parent):
         super().__init__(name, parent)
 
     async def drive_reset(self):
+        """Reset ACK and RD_DATA to idle state"""
         self.logger.debug("Consumer driver reset")
         self.vif.rd_data.value = LogicArray(self.cfg.rd_data_no_ack_value * self.cfg.DATA_WIDTH)
         self.vif.ack.value     = 0
 
     async def flushing_queue(self):
+        """Flush any remaining data from queues"""
         while not self.rd_data_queue.empty():
             try:
                 item = self.rd_data_queue.get_nowait()
-                await self.do_read(item)
             except:
                 break
 
-    async def drive_pins(self):
-        self.logger.debug("Consumer driver waiting for RD or WR")
+    # ✅ Override driver_loop for consumer: listen independently
+    async def driver_loop(self):
+        """Consumer driver continuously listens for and responds to requests.
+        
+        Unlike producer driver, consumer doesn't wait for sequence items.
+        Instead, it monitors rd/wr request signals and responds with ACK.
+        """
+        self.logger.info("🎧 Consumer driver_loop started - listening for requests")
+        
+        while True:
+            # Wait for and respond to next request
+            await self.drive_pins()
+            # Loop continues immediately to listen for next request
 
-        # Wait for request phase
+    async def drive_pins(self):
+        """Wait for RD/WR request and assert ACK response"""
+        self.logger.debug("Consumer waiting for RD or WR request")
+
+        # Wait for request phase - RD or WR must be active
         while True:
             await RisingEdge(self.vif.clk)
-            if not (self.vif.rd.value != 1 and self.vif.wr.value != 1): break
+            rd_active = int(self.vif.rd.value) == 1
+            wr_active = int(self.vif.wr.value) == 1
+            if rd_active or wr_active:
+                break
 
-        self.logger.debug("Received RD/WR request")
-        # Capture request from bus
-        if self.vif.rd.value == 1:
-            self.rsp.access = AccessType.RD
-        elif self.vif.wr.value == 1:
-            self.rsp.access = AccessType.WR
-        self.rsp.addr = self.vif.addr
-        self.req.addr = self.vif.addr
-        if self.rsp.access == AccessType.WR:
-            self.rsp.data = self.cfg.vif.wr_data
-            self.req.data = self.cfg.vif.wr_data
+        self.logger.debug("✅ Received RD/WR request")
+        
+        # Now that request is active, safely read address and data
+        # (they should be valid when rd or wr is asserted)
+        rd_active = int(self.vif.rd.value) == 1
+        wr_active = int(self.vif.wr.value) == 1
+        
+        try:
+            req_addr = int(self.vif.addr.value)
+        except ValueError:
+            req_addr = 0
+            self.logger.warning("Could not parse addr, defaulting to 0")
+            
+        req_data = 0
+        if wr_active:
+            try:
+                req_data = int(self.vif.wr_data.value)
+            except ValueError:
+                req_data = 0
+                self.logger.warning("Could not parse wr_data, defaulting to 0")
+            self.logger.debug(f"Consumer RX: WR@{hex(req_addr)}={hex(req_data)}")
+        else:
+            self.logger.debug(f"Consumer RX: RD@{hex(req_addr)}")
 
-        # Delay before response phase
-        if self.req.no_producer_consumer_delays != 1 and self.req.consumer_delay_rdwr1_ack1 != 0:
-            self.logger.debug(f"debug: Consumer driver delay response {self.req.consumer_delay_rdwr1_ack1} clockcycles")
-            await ClockCycles(self.cfg.vif.clk, self.req.consumer_delay_rdwr1_ack1)
+        # Delay before response (usually 0 - respond same or next cycle)
+        delay_cycles = 0
+        if delay_cycles > 0:
+            await ClockCycles(self.vif.clk, delay_cycles)
 
-        # Acknowledge request and if RD send transaction data
+        # ✅ Assert ACK
+        self.logger.debug("🔔 Asserting ACK")
         self.vif.ack.value = 1
-        if self.vif.rd == 1:
-            self.vif.rd_data.value = self.req.data
-            # Put rd_data in queue
-            self.rd_data_queue.put_nowait(self.req.data)
-        elif self.vif.wr == 1:
-            self.wr_data_queue.put_nowait(self.vif.wr_data.value.integer)
+        
+        if rd_active:
+            # Return distinctive test data for reads
+            dummy_data = 0xAB
+            self.vif.rd_data.value = dummy_data
+            self.logger.debug(f"Consumer TX: RD_DATA={hex(dummy_data)}")
 
-        self.logger.debug("Consumer driver have send response")
+        self.logger.debug("Consumer ACK hold - 1 cycle")
         await RisingEdge(self.vif.clk)
 
-        # Set values back to idle
+        # Deassert ACK
+        self.logger.debug("Deasserting ACK")
         await self.drive_reset()

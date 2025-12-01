@@ -162,3 +162,15 @@ local-debug::
 	@echo PYTHON_H_HOME = $(PYTHON_H_HOME)
 	@echo "run 'where python' "
 	@echo -e "\n--------------------------------------\n"
+
+# ===============================================================================
+# Custom test targets for static and dynamic tests with separate VCD files
+# ===============================================================================
+
+.PHONY: static
+static:
+	@$(MAKE) MODULE=tests.cl_marb_static_test SIM_BUILD=sim_build_static sim
+
+.PHONY: dynamic
+dynamic:
+	@$(MAKE) MODULE=tests.cl_marb_dynamic_test SIM_BUILD=sim_build_dynamic sim

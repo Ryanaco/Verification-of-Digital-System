@@ -8,7 +8,6 @@ __pycache__/
 *.pyc
 
 # Build / sim files
-*.vcd
 *.vvp
 *.xml
 *.log

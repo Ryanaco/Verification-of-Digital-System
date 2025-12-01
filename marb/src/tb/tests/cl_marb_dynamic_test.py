@@ -27,12 +27,11 @@ _LOG_LEVELS = ["DEBUG", "CRITICAL", "ERROR", "WARNING", "INFO", "NOTSET", "NullH
 
 
 # ============================================================
-# 寄存器地址 / 常量（和 static test 一致）
+# 寄存器地址 / 常量
 # ============================================================
-ARB_MODE_ADDR   = 0x00  # control register 地址
-C0_PRIO_ADDR    = 0x04  # CIF0 dynamic priority 寄存器地址
-C1_PRIO_ADDR    = 0x08  # CIF1 dynamic priority 寄存器地址
-C2_PRIO_ADDR    = 0x0C  # CIF2 dynamic priority 寄存器地址
+ARB_MODE_ADDR       = 0x00  # control register 地址
+ARB_DPRIO_ADDR      = 0x04  # dynamic priority register 地址 (包含 C0, C1, C2)
+                             # [7:0]=dprio[0]=C0, [15:8]=dprio[1]=C1, [23:16]=dprio[2]=C2
 
 # 控制寄存器编码：
 # bit0: enable
@@ -66,74 +65,76 @@ class cl_marb_dynamic_apb_cfg_seq(uvm_sequence):
             f"with priorities C0={self.c0_prio}, C1={self.c1_prio}, C2={self.c2_prio}"
         )
 
-        # -------------------------
-        # 1) Disable arbiter, set mode = DYNAMIC
-        # -------------------------
-        item = cl_apb_seq_item.create("ctrl_disable_dynamic")
-        item.addr = ARB_MODE_ADDR
-        # mode = 1 (dynamic), enable = 0
-        item.data = (MODE_DYNAMIC << 1) | ENABLE_OFF
-        item.op   = OpType.WR
-        item.strb = 0xF
-        await self.start_item(item)
-        await self.finish_item(item)
-        seq_logger.info("  - CTRL: enable=0, mode=DYNAMIC (disable arbiter for dprio update)")
+        try:
+            # -------------------------
+            # 1) Disable arbiter, set mode = DYNAMIC
+            # -------------------------
+            item = cl_apb_seq_item.create("ctrl_disable_dynamic")
+            item.addr = ARB_MODE_ADDR
+            # mode = 1 (dynamic), enable = 0
+            item.data = (MODE_DYNAMIC << 1) | ENABLE_OFF
+            item.op   = OpType.WR
+            item.strb = 0xF
+            await self.start_item(item)
+            await self.finish_item(item)
+            seq_logger.info("  - CTRL: enable=0, mode=DYNAMIC (disable arbiter for dprio update)")
 
-        # -------------------------
-        # 2) 写三个 CIF 的 dynamic priority
-        #    文档说明：值越大优先级越高
-        # -------------------------
-        # C0
-        item = cl_apb_seq_item.create("c0_dprio_item")
-        item.addr = C0_PRIO_ADDR
-        item.data = self.c0_prio
-        item.op   = OpType.WR
-        item.strb = 0xF
-        await self.start_item(item)
-        await self.finish_item(item)
-        seq_logger.info(f"  - Set C0 dynamic priority @0x{C0_PRIO_ADDR:08X} = {self.c0_prio}")
+            # -------------------------
+            # 2) 写三个 CIF 的 dynamic priority
+            #    RTL设计：一个32bit寄存器包含4个client的priority
+            #    文档说明：值越大优先级越高
+            # -------------------------
+            # 组合三个priority为单一32bit数据
+            combined_dprio = (self.c0_prio & 0xFF) | ((self.c1_prio & 0xFF) << 8) | ((self.c2_prio & 0xFF) << 16)
+            
+            item = cl_apb_seq_item.create("dprio_combined_item")
+            item.addr = ARB_DPRIO_ADDR
+            item.data = combined_dprio
+            item.op   = OpType.WR
+            item.strb = 0xF  # Write all 4 bytes
+            await self.start_item(item)
+            await self.finish_item(item)
+            seq_logger.info(
+                f"  - Set dynamic priorities (combined) @0x{ARB_DPRIO_ADDR:08X} = 0x{combined_dprio:08X}"
+                f" (C0={self.c0_prio:02X}, C1={self.c1_prio:02X}, C2={self.c2_prio:02X})"
+            )
 
-        # C1
-        item = cl_apb_seq_item.create("c1_dprio_item")
-        item.addr = C1_PRIO_ADDR
-        item.data = self.c1_prio
-        item.op   = OpType.WR
-        item.strb = 0xF
-        await self.start_item(item)
-        await self.finish_item(item)
-        seq_logger.info(f"  - Set C1 dynamic priority @0x{C1_PRIO_ADDR:08X} = {self.c1_prio}")
+            # -------------------------
+            # 3) 等待排序完成
+            #    设计文档说内部 sorter 需要 6 cycles
+            #    我们这里等待足够的时间确保安全
+            # -------------------------
+            seq_logger.info("  - Waiting for internal sorter to finish (waiting 200 ns)...")
+            await Timer(200, units="ns")
+            seq_logger.info("  - Wait completed, proceeding to enable")
 
-        # C2
-        item = cl_apb_seq_item.create("c2_dprio_item")
-        item.addr = C2_PRIO_ADDR
-        item.data = self.c2_prio
-        item.op   = OpType.WR
-        item.strb = 0xF
-        await self.start_item(item)
-        await self.finish_item(item)
-        seq_logger.info(f"  - Set C2 dynamic priority @0x{C2_PRIO_ADDR:08X} = {self.c2_prio}")
+            # -------------------------
+            # 4) Re-enable arbiter, mode=DYNAMIC
+            # -------------------------
+            seq_logger.info("  - Now starting Re-enable write item...")
+            item = cl_apb_seq_item.create("ctrl_enable_dynamic")
+            item.addr = ARB_MODE_ADDR
+            item.data = (MODE_DYNAMIC << 1) | ENABLE_ON   # mode=1, enable=1 -> 0x03
+            item.op   = OpType.WR
+            item.strb = 0xF
+            seq_logger.info(f"  - Re-enable item: addr=0x{item.addr:02X}, data=0x{item.data:08X}, op={item.op}, strb=0x{item.strb:X}")
+            await self.start_item(item)
+            seq_logger.info("  - start_item done, now finish_item...")
+            await self.finish_item(item)
+            seq_logger.info("  - finish_item done")
+            seq_logger.info("  - CTRL: enable=1, mode=DYNAMIC (arbiter enabled with new priorities)")
+            
+            # 额外等待确保APB写入完全完成
+            await Timer(100, units="ns")
 
-        # -------------------------
-        # 3) 等待排序完成
-        #    设计文档说内部 sorter 需要 6 cycles
-        #    我们这里给足裕量：等待 50 ns
-        # -------------------------
-        seq_logger.info("  - Waiting for internal sorter to finish (>=6 cycles)...")
-        await Timer(50, units="ns")
-
-        # -------------------------
-        # 4) Re-enable arbiter, mode=DYNAMIC
-        # -------------------------
-        item = cl_apb_seq_item.create("ctrl_enable_dynamic")
-        item.addr = ARB_MODE_ADDR
-        item.data = (MODE_DYNAMIC << 1) | ENABLE_ON   # mode=1, enable=1
-        item.op   = OpType.WR
-        item.strb = 0xF
-        await self.start_item(item)
-        await self.finish_item(item)
-        seq_logger.info("  - CTRL: enable=1, mode=DYNAMIC (arbiter enabled with new priorities)")
-
-        seq_logger.info("✅ [APB_CFG] Dynamic arbiter config done")
+            seq_logger.info("✅ [APB_CFG] Dynamic arbiter config done")
+            
+        except Exception as e:
+            seq_logger.error(f"❌ [APB_CFG] Exception during APB config: {e}")
+            seq_logger.error(f"   Exception type: {type(e)}")
+            import traceback
+            seq_logger.error(f"   Traceback: {traceback.format_exc()}")
+            raise
 
 
 # ============================================================

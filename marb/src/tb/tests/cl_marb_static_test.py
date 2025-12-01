@@ -218,12 +218,12 @@ class cl_marb_tb_static_test(cl_marb_tb_base_test):
     """
     A4.1 Random traffic test case with STATIC priority
 
-    - 复用 A3 base env（APB + 3x CIF + 1x MIF + virtual sequencer）
-    - 用 APB 把仲裁器设置为 STATIC 模式（mode=0, enable=1）
+    - 复用 A3 base env(APB + 3x CIF + 1x MIF + virtual sequencer)
+    - 用 APB 把仲裁器设置为 STATIC 模式(mode=0, enable=1)
     - 通过 virtual sequence 并发发起 CIF0/1/2 的随机 traffic
     - 地址窗口重叠 => 制造争用
     - 通过波形 / log 观察：
-        * 高优先级 CIF0 应当“更容易”被服务
+        * 高优先级 CIF0 应当"更容易"被服务
         * 不会出现多个 CIF 同时 ack
     """
 
@@ -250,3 +250,4 @@ class cl_marb_tb_static_test(cl_marb_tb_base_test):
 
         self.logger.info("🏁 STATIC random test completed")
         self.drop_objection()
+
