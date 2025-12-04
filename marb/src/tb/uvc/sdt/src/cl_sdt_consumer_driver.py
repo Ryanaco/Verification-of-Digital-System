@@ -23,19 +23,18 @@ class cl_sdt_consumer_driver(cl_sdt_base_driver):
             except:
                 break
 
-    # ✅ Override driver_loop for consumer: listen independently
+    # Override driver_loop for consumer: listen independently
     async def driver_loop(self):
-        """Consumer driver continuously listens for and responds to requests.
-        
-        Unlike producer driver, consumer doesn't wait for sequence items.
+        """
+        Consumer driver continuously listens for and responds to requests.
+
+        Unlike producer driver, consumer does not wait for sequence items.
         Instead, it monitors rd/wr request signals and responds with ACK.
         """
-        self.logger.info("🎧 Consumer driver_loop started - listening for requests")
+        self.logger.info("Consumer driver_loop started - listening for requests")
         
         while True:
-            # Wait for and respond to next request
             await self.drive_pins()
-            # Loop continues immediately to listen for next request
 
     async def drive_pins(self):
         """Wait for RD/WR request and assert ACK response"""
@@ -49,10 +48,9 @@ class cl_sdt_consumer_driver(cl_sdt_base_driver):
             if rd_active or wr_active:
                 break
 
-        self.logger.debug("✅ Received RD/WR request")
+        self.logger.debug("Received RD/WR request")
         
-        # Now that request is active, safely read address and data
-        # (they should be valid when rd or wr is asserted)
+        # Read address and data once a request becomes active
         rd_active = int(self.vif.rd.value) == 1
         wr_active = int(self.vif.wr.value) == 1
         
@@ -73,22 +71,22 @@ class cl_sdt_consumer_driver(cl_sdt_base_driver):
         else:
             self.logger.debug(f"Consumer RX: RD@{hex(req_addr)}")
 
-        # Delay before response (usually 0 - respond same or next cycle)
+        # Optional response delay
         delay_cycles = 0
         if delay_cycles > 0:
             await ClockCycles(self.vif.clk, delay_cycles)
 
-        # ✅ Assert ACK
-        self.logger.debug("🔔 Asserting ACK")
+        # Assert ACK
+        self.logger.debug("Asserting ACK")
         self.vif.ack.value = 1
         
         if rd_active:
-            # Return distinctive test data for reads
+            # Provide read response data
             dummy_data = 0xAB
             self.vif.rd_data.value = dummy_data
             self.logger.debug(f"Consumer TX: RD_DATA={hex(dummy_data)}")
 
-        self.logger.debug("Consumer ACK hold - 1 cycle")
+        self.logger.debug("Holding ACK for 1 cycle")
         await RisingEdge(self.vif.clk)
 
         # Deassert ACK

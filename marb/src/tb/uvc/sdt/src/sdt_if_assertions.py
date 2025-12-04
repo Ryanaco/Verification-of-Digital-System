@@ -14,7 +14,7 @@ class SDTProtocolChecker:
         self.logger = SimLog(f"SDT_CHECKER.{name}")
         self.logger.setLevel("INFO")
         
-        self.logger.critical(f"### SDT CHECKER CONSTRUCTED: {name} ###")
+        self.logger.critical(f"SDT CHECKER CONSTRUCTED: {name}")
         
         # Coverage counters for A7
         self.rd_count = 0
@@ -23,8 +23,8 @@ class SDTProtocolChecker:
         self.violation_count = 0
 
     async def start(self):
-        """Start all protocol checking coroutines"""
-        self.logger.info(f"=== SDT CHECKER STARTED for {self.name} ===")
+        """Start all protocol-checking coroutines"""
+        self.logger.info(f"SDT CHECKER STARTED for {self.name}")
         self.logger.info(
             f"[CHECKER] Connected signals: "
             f"rd={self.vif.rd._name}, wr={self.vif.wr._name}, "
@@ -49,7 +49,7 @@ class SDTProtocolChecker:
             wr = int(self.vif.wr.value)
 
             if rd and wr:
-                self.logger.error("❌ RD and WR HIGH at same time!")
+                self.logger.error("RD and WR are HIGH at the same time")
                 self.violation_count += 1
                 raise AssertionError("RD ∧ WR violation")
 
@@ -71,16 +71,16 @@ class SDTProtocolChecker:
                     self.wr_count += 1
 
             if ack and not last_req:
-                self.logger.error("❌ ACK without request!")
+                self.logger.error("ACK without a preceding request")
                 self.violation_count += 1
-                raise AssertionError("ACK w/o request")
+                raise AssertionError("ACK without request")
 
             if ack:
                 self.ack_count += 1
                 last_req = False
 
     async def check_request_pulse(self):
-        """Monitor RD and WR signal activity (track consecutive cycles for coverage)"""
+        """Monitor RD and WR transitions (used for coverage tracking)"""
         prev_rd = 0
         prev_wr = 0
 
@@ -90,10 +90,9 @@ class SDTProtocolChecker:
             rd = int(self.vif.rd.value)
             wr = int(self.vif.wr.value)
 
-            # Monitor signal transitions (for coverage reporting)
-            # Note: The SDT protocol allows RD/WR to remain HIGH during handshake
-            # until ACK is received, so we don't enforce "single-cycle pulse" strictly
-            # Instead, we just track activity for coverage
+            # SDT protocol allows RD/WR to stay HIGH until ACK is received.
+            # Therefore, this logic only tracks transitions for coverage,
+            # not enforcing single-cycle pulses.
 
             prev_rd = rd
             prev_wr = wr

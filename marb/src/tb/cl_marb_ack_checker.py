@@ -22,7 +22,7 @@ class MarbAckChecker:
         self.logger = logging.getLogger(f"MARB_ACK_CHECKER.{name}")
 
     async def start(self):
-        self.logger.info(f"[A9] ACK Checker started")
+        self.logger.info("[A9] ACK Checker started")
         cocotb.start_soon(self._check_ack_rules())
 
     async def _check_ack_rules(self):
@@ -32,18 +32,18 @@ class MarbAckChecker:
             ack0 = int(self.vif_cif0.ack.value)
             ack1 = int(self.vif_cif1.ack.value)
             ack2 = int(self.vif_cif2.ack.value)
-            ackm = int(self.vif_mif.ack.value)   # 出于完整性，一般 MIF 不应 ack
+            ackm = int(self.vif_mif.ack.value)   # For completeness — normally MIF should not ACK
 
             ack_sum = ack0 + ack1 + ack2
 
-            # --- A9 Rule: only one CIF can receive ack ---
+            # --- A9 Rule: only one CIF can receive ACK ---
             if ack_sum > 1:
                 self.logger.error(
-                    f"❌ [A9] MULTIPLE ACKs DETECTED! "
+                    f" [A9] MULTIPLE ACKs DETECTED! "
                     f"CIF0={ack0}, CIF1={ack1}, CIF2={ack2}"
                 )
-                raise AssertionError("A9 violation: multiple CIFs ack'ed simultaneously")
+                raise AssertionError("A9 violation: multiple CIFs acknowledged simultaneously")
 
-            # Optionally: assert MIF never ack
+            # Optional: ensure MIF never asserts ACK
             if ackm == 1:
                 self.logger.warning("[A9] Warning: MIF ack=1 (unexpected in MARB)")

@@ -100,11 +100,14 @@ class cl_sdt_monitor(uvm_monitor):
             seq_item_name = self.get_full_name() + "sdt_mon_item"
             item = cl_sdt_seq_item.create(seq_item_name)
             
-            # Extract producer_id from agent name (e.g., "cif0_agent" -> 0, "mif_agent" -> 3)
+            # Extract producer_id/cif_id from agent name (e.g., "cif0_agent" -> 0, "mif_agent" -> 3)
             agent_name = self.get_parent().get_name()
             try:
                 if "cif" in agent_name:
-                    item.producer_id = int(agent_name.replace("cif", "").replace("_agent", ""))
+                    cif_idx = int(agent_name.replace("cif", "").replace("_agent", ""))
+                    item.producer_id = cif_idx
+                    item.cif_id = cif_idx  # Add cif_id for ref_model matching
+                    item.client_id = cif_idx  # Add client_id as alias
                 elif "mif" in agent_name:
                     item.producer_id = 3  # MIF is ID 3
                 else:

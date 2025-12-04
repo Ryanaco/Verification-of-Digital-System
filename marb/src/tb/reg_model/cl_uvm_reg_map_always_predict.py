@@ -3,57 +3,55 @@ from pyuvm.s21_uvm_reg_map import *
 
 class uvm_reg_map_always_predict(uvm_reg_map):
     """
-    扩展 uvm_reg_map：
-    - 移除了 enable_auto_predict 限制，总是调用 predictor
-    - 自动兼容整数和字符串类型的地址 (例如 0x4 与 "0x4")
-    - 增加详细日志，方便调试寄存器映射
+    Extended uvm_reg_map:
+    - Removes enable_auto_predict restriction and always calls the predictor
+    - Automatically resolves register keys for both integer and string types (e.g., 0x4 vs "0x4")
+    - Adds detailed logging to help debug register mapping
     """
 
     def __init__(self, name="uvm_reg_map_always_predict"):
         super().__init__(name)
 
     # ==============================================================
-    # 🧠 辅助函数：自动解析寄存器 key
+    # Helper: resolve register key automatically
     # ==============================================================
     def _resolve_reg_key(self, reg_address):
 
-            # 1️⃣ 完全匹配
-            if reg_address in self._regs:
-                return reg_address
+        # 1. Exact match
+        if reg_address in self._regs:
+            return reg_address
 
-            # 2️⃣ 忽略大小写匹配
-            if isinstance(reg_address, str):
-                for key in self._regs.keys():
-                    if key.lower() == reg_address.lower():
-                        return key
+        # 2. Case-insensitive string match
+        if isinstance(reg_address, str):
+            for key in self._regs.keys():
+                if key.lower() == reg_address.lower():
+                    return key
 
-            # 3️⃣ 整数形式匹配
-            if isinstance(reg_address, int):
-                for key in self._regs.keys():
-                    try:
-                        if int(key, 16) == reg_address:
-                            return key
-                    except Exception:
-                        pass
-
-            # 4️⃣ 字符串转整数再匹配整数 key
-            if isinstance(reg_address, str):
+        # 3. Integer match against string hex keys
+        if isinstance(reg_address, int):
+            for key in self._regs.keys():
                 try:
-                    addr_int = int(reg_address, 16)
-                    for key in self._regs.keys():
-                        if isinstance(key, int) and key == addr_int:
-                            return key
-                except ValueError:
+                    if int(key, 16) == reg_address:
+                        return key
+                except Exception:
                     pass
 
-            # 5️⃣ 打印现有寄存器映射方便 debug
-            print(f"[DEBUG] Available reg keys in map: {list(self._regs.keys())}")
-            raise RuntimeError(f"[uvm_reg_map_always_predict] Unknown reg address: {reg_address}")
+        # 4. Convert string to integer and match integer keys
+        if isinstance(reg_address, str):
+            try:
+                addr_int = int(reg_address, 16)
+                for key in self._regs.keys():
+                    if isinstance(key, int) and key == addr_int:
+                        return key
+            except ValueError:
+                pass
 
-
+        # 5. Debug print available keys before raising error
+        print(f"[DEBUG] Available reg keys in map: {list(self._regs.keys())}")
+        raise RuntimeError(f"[uvm_reg_map_always_predict] Unknown reg address: {reg_address}")
 
     # ==============================================================
-    # 📖 READ
+    # READ
     # ==============================================================
     async def process_read_operation(self, reg_address, path: path_t, check: check_t):
         local_adapter = self.get_adapter()
@@ -100,7 +98,7 @@ class uvm_reg_map_always_predict(uvm_reg_map):
             return local_bus_op.status, local_bus_op.data
 
     # ==============================================================
-    # ✍️ WRITE
+    # WRITE
     # ==============================================================
     async def process_write_operation(self, reg_address, data_to_be_written,
                                       path: path_t, check: check_t):
@@ -137,7 +135,9 @@ class uvm_reg_map_always_predict(uvm_reg_map):
             local_sequence = local_adapter.get_parent_sequence()
             local_sequence.sequencer = local_sequencer
 
-            self.logger.debug(f"[MAP] WRITE start @ addr={reg_address} key={key} data=0x{data_to_be_written:X}")
+            self.logger.debug(
+                f"[MAP] WRITE start @ addr={reg_address} key={key} data=0x{data_to_be_written:X}"
+            )
             await local_sequence.start_item(bus_req)
             await local_sequence.finish_item(bus_req)
             local_adapter.bus2reg(bus_req, local_bus_op)
